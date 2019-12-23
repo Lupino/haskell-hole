@@ -1,0 +1,71 @@
+name:                haskell-hole
+version:             0.1.0.0
+github:              "Lupino/haskell-hole"
+license:             BSD3
+author:              "Lupino"
+maintainer:          "lmjubuntu@gmail.com"
+copyright:           "MIT"
+
+extra-source-files:
+- README.md
+- ChangeLog.md
+
+# Metadata used when publishing your package
+# synopsis:            Short description of your package
+# category:            Web
+
+# To avoid duplicated efforts in documentation and dealing with the
+# complications of embedding Haddock markup inside cabal files, it is
+# common to point users to the README.md file.
+description:         Please see the README on GitHub at <https://github.com/Lupino/haskell-hole#readme>
+
+dependencies:
+- base >= 4.7 && < 5
+
+library:
+  source-dirs: src
+  dependencies:
+  - metro-socket
+  - metro
+  - bytestring
+  - binary
+  - unliftio
+
+  - transformers
+  - hslogger
+  - mtl
+
+  - random
+
+executables:
+  holed:
+    main:                holed.hs
+    source-dirs:         app
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - haskell-hole
+    - optparse-applicative
+  hole:
+    main:                hole.hs
+    source-dirs:         app
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - haskell-hole
+    - optparse-applicative
+
+tests:
+  haskell-hole-test:
+    main:                Spec.hs
+    source-dirs:         test
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - haskell-hole
