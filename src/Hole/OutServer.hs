@@ -94,7 +94,7 @@ serveOnce action = do
   r <- servOnce outServer
   case r of
     Nothing       -> return ()
-    Just (_, stp) -> lift $ action stp
+    Just (_, stp) -> void . async $ lift $ action stp
 
 startOutServer
   :: (MonadUnliftIO m, Servable serv)

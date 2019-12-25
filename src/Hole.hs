@@ -9,7 +9,7 @@ module Hole
 
 import           Control.Monad             (void)
 import           Data.ByteString           (ByteString)
-import           Data.List                 (isPrefixOf, (!!))
+import           Data.List                 (isPrefixOf, sortOn)
 import           Data.Word                 (Word16)
 import           Hole.Node                 (HoleEnv, initHoleEnv, pipeHandler,
                                             pongHandler, runHoleT, sessionGen,
@@ -22,7 +22,8 @@ import           Metro.Conn                (initConnEnv, receive, runConnT,
                                             send)
 import           Metro.IOHashMap           (IOHashMap)
 import qualified Metro.IOHashMap           as HM (elems)
-import           Metro.Node                (SessionMode (..), withSessionT)
+import           Metro.Node                (SessionMode (..), getSessionSize1,
+                                            withSessionT)
 import           Metro.Server              (ServerEnv, getNodeEnvList,
                                             initServerEnv, setServerName,
                                             startServer)
@@ -35,7 +36,6 @@ import           Metro.UDP                 (udpConfig)
 import           Metro.Utils               (setupLog)
 import           System.Log                (Priority (..))
 import           System.Log.Logger         (errorM)
-import           System.Random             (randomRIO)
 import           UnliftIO
 
 data Config = Config
@@ -65,14 +65,15 @@ action
   :: (MonadUnliftIO m, Transport tp0, Transport tp1)
   => HoleNodeList tp0 -> TransportConfig tp1 -> m ()
 action nodeList config = do
-  nl <- HM.elems nodeList
-  case nl of
+  nl <- mapM mapFunc =<< HM.elems nodeList
+  case sortOn fst nl of
     [] -> liftIO $ errorM "Hole" "Client not found."
-    [nodeEnv] -> runHoleT nodeEnv $ withSessionT Nothing $ pipeHandler config
-    _ -> do
-      idx <- liftIO $ randomRIO (0, length nl - 1)
-      let nodeEnv = nl !! idx
+    ((_, nodeEnv):_) ->
       runHoleT nodeEnv $ withSessionT Nothing $ pipeHandler config
+
+  where mapFunc x = do
+          size <- getSessionSize1 x
+          return (size, x)
 
 startHoleOutServer
   :: (Servable serv1, Transport tp0, Transport (STP serv1), Transport tp1)

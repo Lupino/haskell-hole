@@ -9,7 +9,7 @@ module Hole.Types
 import           Data.Binary          (Binary (..), decode)
 import           Data.Binary.Get      (getByteString, getWord16be)
 import           Data.Binary.Put      (putByteString, putWord16be)
-import           Data.ByteString      (ByteString, empty)
+import           Data.ByteString      (ByteString)
 import qualified Data.ByteString      as B (length)
 import           Data.ByteString.Lazy (fromStrict)
 import           Data.Word            (Word16)
@@ -26,8 +26,8 @@ instance Binary PacketLength where
 
 
 data Packet = Packet
-  { packetId   :: Word16
-  , packetData :: ByteString
+  { packetId   :: !Word16
+  , packetData :: !ByteString
   }
   deriving (Show, Eq)
 

@@ -35,8 +35,6 @@ library:
   - hslogger
   - mtl
 
-  - random
-
 executables:
   holed:
     main:                holed.hs
