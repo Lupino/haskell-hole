@@ -1,3 +1,4 @@
+{-# LANGUAGE BangPatterns      #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Hole.Node
@@ -67,10 +68,10 @@ pipeHandler
   => TransportConfig tp1 -> HoleSessionT tp m ()
 pipeHandler config = do
   liftIO $ putStrLn "Session Start..."
-  tp1 <- liftIO $! newTransport config
+  tp1 <- liftIO $ newTransport config
 
   io1 <- async . void . runMaybeT . forever $ do
-    body <- lift $! fmap getPacketData <$> receive
+    body <- lift $ fmap getPacketData <$> receive
     case body of
       Nothing    -> mzero
       Just ""    -> mzero
@@ -78,15 +79,13 @@ pipeHandler config = do
       Just bs    -> liftIO $ sendData tp1 bs
 
   io0 <- async . void . runMaybeT . forever $ do
-    bs <- liftIO $! recvData tp1 4096 -- 4K
+    !bs <- liftIO $ recvData tp1 65535 -- 4000K
     case bs of
       ""    -> mzero
       "EOF" -> mzero
       _     -> lift $ send $ packet bs
 
-  void $ waitAny [io0, io1]
-  cancel io0
-  cancel io1
+  void $ waitAnyCancel [io0, io1]
   send $ packet "EOF"
   liftIO $ closeTransport tp1
   liftIO $ putStrLn "Session End..."

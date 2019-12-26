@@ -35,6 +35,8 @@ library:
   - hslogger
   - mtl
 
+  - vector
+
 executables:
   holed:
     main:                holed.hs
