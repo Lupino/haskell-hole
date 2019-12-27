@@ -22,7 +22,7 @@ import           Control.Monad.Trans.Maybe  (runMaybeT)
 import           Control.Monad.Trans.Reader (ReaderT (..), runReaderT)
 import           Data.Either                (isLeft)
 import           Metro.Class                (Servable (..), TransportConfig)
-import           System.Log.Logger          (infoM)
+import           System.Log.Logger          (errorM, infoM)
 import           UnliftIO
 
 data OutServerEnv serv = OutServerEnv
@@ -70,14 +70,16 @@ serveForever
   => (TransportConfig (STP serv) -> m ())
   -> OutServerT serv m ()
 serveForever action = do
-  liftIO $ infoM "Metro.OutServer" "HoleOutServer started"
+  liftIO $ infoM "Hole.OutServer" "HoleOutServer started"
   state <- asks outState
   void . runMaybeT . forever $ do
     e <- lift $ tryServeOnce action
-    when (isLeft e) mzero
+    when (isLeft e) $ do
+      liftIO $ errorM "Hole.OutServer" $ "Error: " ++ show e
+      mzero
     alive <- readTVarIO state
     unless alive mzero
-  liftIO $ infoM "Metro.OutServer" "HoleOutServer closed"
+  liftIO $ infoM "Hole.OutServer" "HoleOutServer closed"
 
 tryServeOnce
   :: (MonadUnliftIO m, Servable serv)
