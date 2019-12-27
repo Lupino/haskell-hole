@@ -30,7 +30,7 @@ resolver: lts-14.6
 #   - wai
 packages:
 - .
-# - ../metro-framework
+
 # Dependency packages to be pulled from upstream that are not in the resolver.
 # These entries can reference officially published versions as well as
 # forks / in-progress versions pinned to a git hash. For example:
@@ -43,7 +43,7 @@ packages:
 # extra-deps: []
 extra-deps:
 - git: https://github.com/Lupino/metro.git
-  commit: 47618be37a2b8ed8bcba7335e43a49e49a7df61d
+  commit: 377d1ab875c2785d7996c3818a66aefc00a52d6f
   subdirs:
   - metro-socket
   - .
