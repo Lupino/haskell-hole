@@ -18,18 +18,17 @@ import           Control.Monad             (forever, mzero, void)
 import           Control.Monad.Trans.Class (lift)
 import           Control.Monad.Trans.Maybe (runMaybeT)
 import           Data.ByteString           (ByteString)
-import qualified Data.ByteString           as B (length)
 import           Data.Word                 (Word16)
 import           Hole.Types                (Packet, getPacketData, packet)
-import           Metro.Class               (Transport (..), getPacketId)
+import           Metro.Class               (Transport (..))
 import           Metro.Conn                (ConnEnv)
 import           Metro.Node                (NodeEnv1, NodeT, SessionMode (..),
                                             initEnv1, runNodeT1, setSessionMode,
                                             startNodeT)
 import           Metro.Session             (SessionT, makeResponse_, receive,
                                             send)
+import           System.Log.Logger         (errorM)
 import           UnliftIO
-import           UnliftIO.Concurrent       (threadDelay)
 
 type HoleT = NodeT () ByteString Word16 Packet
 
@@ -67,25 +66,32 @@ pipeHandler
   :: (MonadUnliftIO m, Transport tp, Transport tp1)
   => TransportConfig tp1 -> HoleSessionT tp m ()
 pipeHandler config = do
-  liftIO $ putStrLn "Session Start..."
   tp1 <- liftIO $ newTransport config
 
   io1 <- async . void . runMaybeT . forever $ do
-    body <- lift $ fmap getPacketData <$> receive
+    !body <- lift $ fmap getPacketData <$> receive
     case body of
       Nothing    -> mzero
       Just ""    -> mzero
       Just "EOF" -> mzero
-      Just bs    -> liftIO $ sendData tp1 bs
+      Just bs    -> do
+        r <- liftIO $ tryAny $ sendData tp1 bs
+        case r of
+          Left e -> do
+            liftIO $ errorM "Hole.Node" $ "sendData Error: " ++ show e
+            mzero
+          Right _ -> pure ()
 
   io0 <- async . void . runMaybeT . forever $ do
-    !bs <- liftIO $ recvData tp1 65535 -- 4000K
-    case bs of
-      ""    -> mzero
-      "EOF" -> mzero
-      _     -> lift $ send $ packet bs
+    !r <- liftIO $ tryAny $ recvData tp1 41943040 -- 40M
+    case r of
+      Left e -> do
+        liftIO $ errorM "Hole.Node" $ "recvData Error: " ++ show e
+        mzero
+      Right ""     -> mzero
+      Right "EOF"  -> mzero
+      Right bs     -> lift $ send $ packet bs
 
   void $ waitAnyCancel [io0, io1]
   send $ packet "EOF"
   liftIO $ closeTransport tp1
-  liftIO $ putStrLn "Session End..."
