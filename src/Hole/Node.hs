@@ -23,12 +23,14 @@ import           Hole.Types                (Packet, getPacketData, packet)
 import           Metro.Class               (Transport (..))
 import           Metro.Conn                (ConnEnv)
 import           Metro.Node                (NodeEnv1, NodeT, SessionMode (..),
-                                            initEnv1, runNodeT1, setSessionMode,
-                                            startNodeT)
+                                            initEnv1, request, runNodeT1,
+                                            setSessionMode, startNodeT,
+                                            stopNodeT)
 import           Metro.Session             (SessionT, makeResponse_, receive,
                                             send)
 import           System.Log.Logger         (errorM)
 import           UnliftIO
+import           UnliftIO.Concurrent       (threadDelay)
 
 type HoleT = NodeT () ByteString Word16 Packet
 
@@ -38,15 +40,15 @@ type HoleSessionT = SessionT () ByteString Word16 Packet
 
 initHoleEnv :: MonadIO m => ConnEnv tp -> ByteString -> m (HoleEnv tp)
 initHoleEnv connEnv nid = do
-  gen <- liftIO sessionGen
+  gen <- liftIO $ sessionGen (maxBound - 1000) maxBound
   initEnv1 (setSessionMode MultiAction) connEnv () nid gen
 
-sessionGen :: IO (IO Word16)
-sessionGen = do
-  gen <- newTVarIO 1
+sessionGen :: Word16 -> Word16 -> IO (IO Word16)
+sessionGen start end = do
+  gen <- newTVarIO start
   return $ atomically $ do
     v <- readTVar gen
-    writeTVar gen $! (if v == maxBound then 1 else v + 1)
+    writeTVar gen $! (if v == end then start else v + 1)
     return v
 
 pongHandler :: (MonadUnliftIO m, Transport tp) => HoleSessionT tp m ()
@@ -59,8 +61,23 @@ pongHandler = makeResponse_ $ \pkt ->
 runHoleT :: Monad m => HoleEnv tp -> HoleT tp m a -> m a
 runHoleT  = runNodeT1
 
+checkAlive :: (MonadUnliftIO m, Transport tp) => HoleT tp m ()
+checkAlive = void . async $ do
+  void . runMaybeT . forever $ do
+    threadDelay 10000000 -- 10s
+    r <- lift . tryAny $ request (Just 10) $ packet "PING"
+    case r of
+      Left e -> do
+        liftIO $ errorM "Hole.Node" $ "CheckAlive Error: " ++ show e
+        mzero
+      Right _ -> return ()
+
+  stopNodeT
+
 startHoleT :: (MonadUnliftIO m, Transport tp) => HoleEnv tp -> HoleSessionT tp m () -> m ()
-startHoleT env sess = runHoleT env $ startNodeT sess
+startHoleT env sess = runHoleT env $ do
+  checkAlive
+  startNodeT sess
 
 pipeHandler
   :: (MonadUnliftIO m, Transport tp, Transport tp1)

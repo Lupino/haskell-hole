@@ -54,7 +54,7 @@ newHoleServer
   -> (HoleServerEnv serv tp -> HoleServerEnv serv tp)
   -> IO (HoleServerEnv serv tp)
 newHoleServer mk config mapEnv = do
-  gen <- sessionGen
+  gen <- sessionGen 1 (maxBound - 1000)
   sEnv <- fmap mapEnv . initServerEnv config gen mk $ \_ connEnv -> do
     dat <- getPacketData <$> runConnT connEnv receive
     return $ Just (dat, ())
