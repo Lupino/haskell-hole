@@ -7,35 +7,32 @@ module Hole
   , startHoleClient
   ) where
 
-import           Control.Monad             (void)
-import           Data.ByteString           (ByteString)
-import           Data.List                 (isPrefixOf, sortOn)
-import           Data.Word                 (Word16)
-import           Hole.Node                 (HoleEnv, initHoleEnv, pipeHandler,
-                                            pongHandler, runHoleT, sessionGen,
-                                            startHoleT)
+import           Control.Monad          (void)
+import           Data.ByteString        (ByteString)
+import           Data.List              (sortOn)
+import           Data.Word              (Word16)
+import           Hole.Node              (HoleEnv, initHoleEnv, pipeHandler,
+                                         pongHandler, runHoleT, sessionGen,
+                                         startHoleT)
 import           Hole.OutServer
 import           Hole.Types
-import           Metro.Class               (Servable (STP, ServerConfig),
-                                            Transport (TransportConfig))
-import           Metro.Conn                (initConnEnv, receive, runConnT,
-                                            send)
-import           Metro.IOHashMap           (IOHashMap)
-import qualified Metro.IOHashMap           as HM (elems)
-import           Metro.Node                (SessionMode (..), getSessionSize1,
-                                            withSessionT)
-import           Metro.Server              (ServerEnv, getNodeEnvList,
-                                            initServerEnv, setServerName,
-                                            startServer)
-import qualified Metro.Server              as S (setSessionMode)
-import           Metro.TCP                 (tcpConfig)
-import           Metro.Transport.Debug     (DebugMode (..), debugConfig)
-import           Metro.Transport.Socket    (socketUri)
-import           Metro.Transport.UDPSocket (udpSocket)
-import           Metro.UDP                 (udpConfig)
-import           Metro.Utils               (setupLog)
-import           System.Log                (Priority (..))
-import           System.Log.Logger         (errorM)
+import           Metro.Class            (Servable (STP, ServerConfig),
+                                         Transport (TransportConfig))
+import           Metro.Conn             (initConnEnv, receive, runConnT, send)
+import           Metro.IOHashMap        (IOHashMap)
+import qualified Metro.IOHashMap        as HM (elems)
+import           Metro.Node             (SessionMode (..), getSessionSize1,
+                                         withSessionT)
+import           Metro.Server           (ServerEnv, getNodeEnvList,
+                                         initServerEnv, setServerName,
+                                         startServer)
+import qualified Metro.Server           as S (setSessionMode)
+import           Metro.SocketServer     (socketServer)
+import           Metro.Transport.Debug  (DebugMode (..), debugConfig)
+import           Metro.Transport.Socket (socket)
+import           Metro.Utils            (setupLog)
+import           System.Log             (Priority (..))
+import           System.Log.Logger      (errorM)
 import           UnliftIO
 
 data Config = Config
@@ -102,27 +99,10 @@ startHoleServer Config {..} = do
   if logLevel == DEBUG then do
     let m0 = debugConfig "HoleServer" Raw
         m1 = debugConfig "OutServer" Raw
-    if "udp" `isPrefixOf` holeSockPort then
-      if "udp" `isPrefixOf` outSockPort then
-        startHoleServer_ (udpConfig holeSockPort) (udpConfig outSockPort) m0 m1
-      else
-        startHoleServer_ (udpConfig holeSockPort) (tcpConfig outSockPort) m0 m1
-    else
-      if "udp" `isPrefixOf` outSockPort then
-        startHoleServer_ (tcpConfig holeSockPort) (udpConfig outSockPort) m0 m1
-      else
-        startHoleServer_ (tcpConfig holeSockPort) (tcpConfig outSockPort) m0 m1
+
+    startHoleServer_ (socketServer holeSockPort) (socketServer outSockPort) m0 m1
   else
-    if "udp" `isPrefixOf` holeSockPort then
-      if "udp" `isPrefixOf` outSockPort then
-        startHoleServer_ (udpConfig holeSockPort) (udpConfig outSockPort) id id
-      else
-        startHoleServer_ (udpConfig holeSockPort) (tcpConfig outSockPort) id id
-    else
-      if "udp" `isPrefixOf` outSockPort then
-        startHoleServer_ (tcpConfig holeSockPort) (udpConfig outSockPort) id id
-      else
-        startHoleServer_ (tcpConfig holeSockPort) (tcpConfig outSockPort) id id
+    startHoleServer_ (socketServer holeSockPort) (socketServer outSockPort) id id
 
 startHoleClient :: ByteString -> Config -> IO ()
 startHoleClient cid Config {..} = do
@@ -130,27 +110,9 @@ startHoleClient cid Config {..} = do
   if logLevel == DEBUG then do
     let m0 = debugConfig "HoleClient" Raw
         m1 = debugConfig "OutClient" Raw
-    if "udp" `isPrefixOf` holeSockPort then
-      if "udp" `isPrefixOf` outSockPort then
-        runHoleClient cid (m0 $ udpSocket holeSockPort) (m1 $ udpSocket outSockPort)
-      else
-        runHoleClient cid (m0 $ udpSocket holeSockPort) (m1 $ socketUri outSockPort)
-    else
-      if "udp" `isPrefixOf` outSockPort then
-        runHoleClient cid (m0 $ socketUri holeSockPort) (m1 $ udpSocket outSockPort)
-      else
-        runHoleClient cid (m0 $ socketUri holeSockPort) (m1 $ socketUri outSockPort)
+    runHoleClient cid (m0 $ socket holeSockPort) (m1 $ socket outSockPort)
   else
-    if "udp" `isPrefixOf` holeSockPort then
-      if "udp" `isPrefixOf` outSockPort then
-        runHoleClient cid (udpSocket holeSockPort) (udpSocket outSockPort)
-      else
-        runHoleClient cid (udpSocket holeSockPort) (socketUri outSockPort)
-    else
-      if "udp" `isPrefixOf` outSockPort then
-        runHoleClient cid (socketUri holeSockPort) (udpSocket outSockPort)
-      else
-        runHoleClient cid (socketUri holeSockPort) (socketUri outSockPort)
+    runHoleClient cid (socket holeSockPort) (socket outSockPort)
 
 runHoleClient
   :: (Transport tp0, Transport tp1)
