@@ -19,7 +19,8 @@ import           Control.Monad.Trans.Class (lift)
 import           Control.Monad.Trans.Maybe (runMaybeT)
 import           Data.ByteString           (ByteString)
 import           Data.Word                 (Word16)
-import           Hole.Types                (Packet, getPacketData, packet)
+import           Hole.Types                (Packet, getPacketData,
+                                            maxDataLength, packet)
 import           Metro.Class               (Transport (..))
 import           Metro.Conn                (ConnEnv)
 import           Metro.Node                (NodeEnv1, NodeT, SessionMode (..),
@@ -100,7 +101,7 @@ pipeHandler config = do
           Right _ -> pure ()
 
   io0 <- async . void . runMaybeT . forever $ do
-    !r <- liftIO $ tryAny $ recvData tp1 41943040 -- 40M
+    !r <- liftIO $ tryAny $ recvData tp1 maxDataLength
     case r of
       Left e -> do
         liftIO $ errorM "Hole.Node" $ "recvData Error: " ++ show e

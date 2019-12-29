@@ -4,6 +4,7 @@ module Hole.Types
   ( Packet (..)
   , packet
   , getPacketData
+  , maxDataLength
   ) where
 
 import           Control.Exception    (Exception)
@@ -15,12 +16,15 @@ import           Data.ByteString      (ByteString)
 import qualified Data.ByteString      as B (length)
 import           Data.ByteString.Lazy (fromStrict)
 import qualified Data.ByteString.Lazy as LB (unpack)
-import           Data.Word            (Word16)
+import           Data.Word            (Word16, Word32)
 import           Hole.CRC16           (crc16)
 import           Metro.Class          (GetPacketId (..), RecvPacket (..),
                                        SendPacket (..), SetPacketId (..),
                                        sendBinary)
 import           UnliftIO             (throwIO)
+
+maxDataLength :: Int
+maxDataLength = 41943040 -- 40m
 
 
 newtype PacketLength = PacketLength Int
