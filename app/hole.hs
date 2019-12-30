@@ -8,7 +8,8 @@ import           Options.Applicative
 
 data Flags = Flags
   { flagHoleAddr :: String
-  , flagInAddr   :: String
+  , flagAddr     :: String
+  , flagRL       :: Bool
   , flagLog      :: String
   , flagCID      :: String
   }
@@ -22,11 +23,14 @@ parser = Flags
     <> help "Hole address"
     <> value "tcp://127.0.0.1:4000")
   <*> strOption
-    (  long "in-addr"
-    <> short 'i'
+    (  long "addr"
+    <> short 'a'
     <> metavar "ADDRESS"
-    <> help "Int address"
+    <> help "Address"
     <> value "tcp://127.0.0.1:80")
+  <*> switch
+    (  long "use-remote-to-local"
+    <> help "Use remote to local mode, default is local to remote")
   <*> strOption
     (  long "log-level"
     <> short 'l'
@@ -52,6 +56,7 @@ program :: Flags -> IO ()
 program Flags {..} =
   startHoleClient (fromString flagCID) Config
     { holeSockPort = flagHoleAddr
-    , outSockPort = flagInAddr
+    , outSockPort = flagAddr
     , logLevel = read flagLog
+    , proxyMode = if flagRL then RemoteToLocal else LocalToRemote
     }
