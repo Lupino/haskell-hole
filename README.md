@@ -35,11 +35,15 @@ The hole support protocol `tcp` `tcp6` `udp` `udp6` and `unix socket`.
 
 - On server.
 
-    holed -H tcp://server:port --addr tcp://server:portout
+```
+holed -H tcp://server:port --addr tcp://server:portout
+```
 
 - On local mathine
 
-    hole -H tcp://server:port --addr tcp://localhost:portin
+```
+hole -H tcp://server:port --addr tcp://localhost:portin
+```
 
 Then you can access the local server via. tcp://server:portout
 
@@ -47,11 +51,15 @@ Then you can access the local server via. tcp://server:portout
 
 - On server
 
-    holed -H tcp://server:port --addr tcp://localhost:portin --use-remote-to-local
+```
+holed -H tcp://server:port --addr tcp://localhost:portin --use-remote-to-local
+```
 
 - On local machine
 
-    hole -H tcp://server:port --addr tcp://localhost:portout --use-remote-to-local
+```
+hole -H tcp://server:port --addr tcp://localhost:portout --use-remote-to-local
+```
 
 Then you can access the remote server via. tcp://localhost:portout
 
