@@ -63,6 +63,59 @@ hole -H tcp://server:port --addr tcp://localhost:portout --use-remote-to-local
 
 Then you can access the remote server via. tcp://localhost:portout
 
+# Arguments
+
+## hole
+
+```
+$ hole -h
+hole - Hole Client
+
+Usage: hole [-H|--hole-addr ADDRESS] [-a|--addr ADDRESS] [--use-remote-to-local]
+            [-l|--log-level LEVEL] [-n|--name NAME] [-m|--method METHOD]
+            [-c|--cipher CIPHER] [-k|--key KEY]
+  Hole Client
+
+Available options:
+  -h,--help                Show this help text
+  -H,--hole-addr ADDRESS   Hole address
+  -a,--addr ADDRESS        Address
+  --use-remote-to-local    Use remote to local mode, default is local to remote
+  -l,--log-level LEVEL     Log level
+  -n,--name NAME           Client name
+  -m,--method METHOD       Crypto method. support cbc cfb ecb ctr. default cfb
+  -c,--cipher CIPHER       Crypto cipher. support aes128 aes192 aes256 blowfish
+                           blowfish64 blowfish128 blowfish256 blowfish448 cast5
+                           camellia128 des des_eee3 des_ede3 des_eee2 des_ede2
+                           twofish128 twofish192 twofish256 none. default none
+  -k,--key KEY             Crypto key.
+```
+
+## holed
+
+```
+$ holed -h
+holed - Hole Server
+
+Usage: holed [-H|--hole-addr ADDRESS] [-a|--addr ADDRESS]
+             [--use-remote-to-local] [-l|--log-level LEVEL] [-m|--method METHOD]
+             [-c|--cipher CIPHER] [-k|--key KEY]
+  Hole Server
+
+Available options:
+  -h,--help                Show this help text
+  -H,--hole-addr ADDRESS   Hole address
+  -a,--addr ADDRESS        Address
+  --use-remote-to-local    Use remote to local mode, default is local to remote
+  -l,--log-level LEVEL     Log level
+  -m,--method METHOD       Crypto method. one of cbc cfb ecb ctr
+  -c,--cipher CIPHER       Crypto cipher. one of aes128 aes192 aes256 blowfish
+                           blowfish64 blowfish128 blowfish256 blowfish448 cast5
+                           camellia128 des des_eee3 des_ede3 des_eee2 des_ede2
+                           twofish128 twofish192 twofish256 none
+  -k,--key KEY             Crypto key.
+```
+
 
 # Example
 
