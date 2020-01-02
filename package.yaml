@@ -37,6 +37,10 @@ library:
 
   - vector
 
+  - cryptonite
+  - metro-transport-crypto
+  - text
+
 executables:
   holed:
     main:                holed.hs

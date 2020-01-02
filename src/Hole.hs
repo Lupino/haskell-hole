@@ -1,5 +1,7 @@
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE RecordWildCards  #-}
+{-# LANGUAGE FlexibleContexts    #-}
+{-# LANGUAGE OverloadedStrings   #-}
+{-# LANGUAGE RecordWildCards     #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 module Hole
   ( Config (..)
@@ -8,31 +10,41 @@ module Hole
   , startHoleClient
   ) where
 
-import           Data.ByteString        (ByteString)
-import           Data.List              (sortOn)
-import           Data.Word              (Word16)
-import           Hole.Node              (HoleEnv, HoleSessionT, initHoleEnv,
-                                         pipeHandler, pongHandler, runHoleT,
-                                         sessionGen, startHoleT)
+
+import           Crypto.Cipher.AES
+import           Crypto.Cipher.Blowfish
+import           Crypto.Cipher.Camellia
+import           Crypto.Cipher.CAST5
+import           Crypto.Cipher.DES
+import           Crypto.Cipher.TripleDES
+import           Crypto.Cipher.Twofish
+import           Crypto.Cipher.Types     (BlockCipher (..), Cipher (..))
+import           Data.ByteString         (ByteString)
+import           Data.List               (sortOn)
+import           Data.Word               (Word16)
+import           Hole.Node               (HoleEnv, HoleSessionT, initHoleEnv,
+                                          pipeHandler, pongHandler, runHoleT,
+                                          sessionGen, startHoleT)
 import           Hole.OutServer
 import           Hole.Types
-import           Metro.Class            (Servable (STP, ServerConfig),
-                                         Transport (TransportConfig))
-import           Metro.Conn             (initConnEnv, receive, runConnT, send)
-import           Metro.IOHashMap        (IOHashMap)
-import qualified Metro.IOHashMap        as HM (elems)
-import           Metro.Node             (SessionMode (..), getSessionSize1,
-                                         withSessionT)
-import           Metro.Server           (ServerEnv, getNodeEnvList,
-                                         initServerEnv, setServerName,
-                                         startServer)
-import qualified Metro.Server           as S (setSessionMode)
-import           Metro.SocketServer     (socketServer)
-import           Metro.Transport.Debug  (DebugMode (..), debugConfig)
-import           Metro.Transport.Socket (socket)
-import           Metro.Utils            (setupLog)
-import           System.Log             (Priority (..))
-import           System.Log.Logger      (errorM)
+import           Metro.Class             (Servable (STP, ServerConfig),
+                                          Transport (TransportConfig))
+import           Metro.Conn              (initConnEnv, receive, runConnT, send)
+import           Metro.IOHashMap         (IOHashMap)
+import qualified Metro.IOHashMap         as HM (elems)
+import           Metro.Node              (SessionMode (..), getSessionSize1,
+                                          withSessionT)
+import           Metro.Server            (ServerEnv, getNodeEnvList,
+                                          initServerEnv, setServerName,
+                                          startServer)
+import qualified Metro.Server            as S (setSessionMode)
+import           Metro.SocketServer      (socketServer)
+import           Metro.TP.Crypto         (makeCrypto)
+import           Metro.TP.Debug          (DebugMode (..), debugConfig)
+import           Metro.TP.Socket         (socket)
+import           Metro.Utils             (setupLog)
+import           System.Log              (Priority (..))
+import           System.Log.Logger       (errorM)
 import           UnliftIO
 
 data ProxyMode = LocalToRemote | RemoteToLocal
@@ -43,6 +55,9 @@ data Config = Config
   , outSockPort  :: String
   , logLevel     :: Priority
   , proxyMode    :: ProxyMode
+  , cryptoMethod :: String
+  , cryptoCipher :: String
+  , cryptoKey    :: String
   }
 
 type HoleServerEnv serv = ServerEnv serv () ByteString Word16 Packet
@@ -110,19 +125,32 @@ startHoleServerRL_ config0 config1 mapT0 = do
     Left e  -> liftIO $ errorM "Hole" $ "HoleServer error " ++ show e
     Right _ -> return ()
 
-startHoleServerLR :: Config -> IO ()
-startHoleServerLR Config {..} = do
+startHoleServerLR
+  :: (Cipher cipher, BlockCipher cipher)
+  => Maybe cipher -> Config -> IO ()
+startHoleServerLR mcipher Config {..} = do
   setupLog logLevel
+
   if logLevel == DEBUG then do
     let m0 = debugConfig "HoleServer" Raw
         m1 = debugConfig "OutServer" Raw
 
     startHoleServerLR_ (socketServer holeSockPort) (socketServer outSockPort) m0 m1
   else
-    startHoleServerLR_ (socketServer holeSockPort) (socketServer outSockPort) id id
+    case mcipher of
+      Nothing ->
+        startHoleServerLR_ (socketServer holeSockPort) (socketServer outSockPort) id id
+      Just cipher ->
+        startHoleServerLR_
+          (socketServer holeSockPort)
+          (socketServer outSockPort)
+          (makeCrypto cipher cryptoMethod cryptoKey)
+          id
 
-startHoleServerRL :: Config -> IO ()
-startHoleServerRL Config {..} = do
+startHoleServerRL
+  :: (Cipher cipher, BlockCipher cipher)
+  => Maybe cipher -> Config -> IO ()
+startHoleServerRL mcipher Config {..} = do
   setupLog logLevel
   if logLevel == DEBUG then do
     let m0 = debugConfig "HoleServer" Raw
@@ -130,39 +158,179 @@ startHoleServerRL Config {..} = do
 
     startHoleServerRL_ (socketServer holeSockPort) (m1 $ socket outSockPort) m0
   else
-    startHoleServerRL_ (socketServer holeSockPort) (socket outSockPort) id
+    case mcipher of
+      Nothing ->
+        startHoleServerRL_ (socketServer holeSockPort) (socket outSockPort) id
+      Just cipher ->
+        startHoleServerRL_
+          (socketServer holeSockPort)
+          (socket outSockPort)
+          (makeCrypto cipher cryptoMethod cryptoKey)
+
+startHoleServer_ :: (Cipher cipher, BlockCipher cipher) => Maybe cipher -> Config -> IO ()
+startHoleServer_ mcipher config = do
+  case proxyMode config of
+    LocalToRemote -> startHoleServerLR mcipher config
+    RemoteToLocal -> startHoleServerRL mcipher config
 
 startHoleServer :: Config -> IO ()
 startHoleServer config =
-  case proxyMode config of
-    LocalToRemote -> startHoleServerLR config
-    RemoteToLocal -> startHoleServerRL config
+  case cryptoCipher config of
+    "AES128"      -> startHoleServer_ (Just (undefined :: AES128)) config
+    "AES192"      -> startHoleServer_ (Just (undefined :: AES192)) config
+    "AES256"      -> startHoleServer_ (Just (undefined :: AES256)) config
 
-startHoleClient :: ByteString -> Config -> IO ()
+    "Blowfish"    -> startHoleServer_ (Just (undefined :: Blowfish)) config
+    "Blowfish64"  -> startHoleServer_ (Just (undefined :: Blowfish64)) config
+    "Blowfish128" -> startHoleServer_ (Just (undefined :: Blowfish128)) config
+    "Blowfish256" -> startHoleServer_ (Just (undefined :: Blowfish256)) config
+    "Blowfish448" -> startHoleServer_ (Just (undefined :: Blowfish448)) config
+
+    "CAST5"       -> startHoleServer_ (Just (undefined :: CAST5)) config
+
+    "Camellia128" -> startHoleServer_ (Just (undefined :: Camellia128)) config
+
+    "DES"         -> startHoleServer_ (Just (undefined :: DES)) config
+
+    "DES_EEE3"    -> startHoleServer_ (Just (undefined :: DES_EEE3)) config
+    "DES_EDE3"    -> startHoleServer_ (Just (undefined :: DES_EDE3)) config
+    "DES_EEE2"    -> startHoleServer_ (Just (undefined :: DES_EEE2)) config
+    "DES_EDE2"    -> startHoleServer_ (Just (undefined :: DES_EDE2)) config
+
+    "Twofish128"  -> startHoleServer_ (Just (undefined :: Twofish128)) config
+    "Twofish192"  -> startHoleServer_ (Just (undefined :: Twofish192)) config
+    "Twofish256"  -> startHoleServer_ (Just (undefined :: Twofish256)) config
+
+    "aes128"      -> startHoleServer_ (Just (undefined :: AES128)) config
+    "aes192"      -> startHoleServer_ (Just (undefined :: AES192)) config
+    "aes256"      -> startHoleServer_ (Just (undefined :: AES256)) config
+
+    "blowfish"    -> startHoleServer_ (Just (undefined :: Blowfish)) config
+    "blowfish64"  -> startHoleServer_ (Just (undefined :: Blowfish64)) config
+    "blowfish128" -> startHoleServer_ (Just (undefined :: Blowfish128)) config
+    "blowfish256" -> startHoleServer_ (Just (undefined :: Blowfish256)) config
+    "blowfish448" -> startHoleServer_ (Just (undefined :: Blowfish448)) config
+
+    "cast5"       -> startHoleServer_ (Just (undefined :: CAST5)) config
+
+    "camellia128" -> startHoleServer_ (Just (undefined :: Camellia128)) config
+
+    "des"         -> startHoleServer_ (Just (undefined :: DES)) config
+
+    "des_eee3"    -> startHoleServer_ (Just (undefined :: DES_EEE3)) config
+    "des_ede3"    -> startHoleServer_ (Just (undefined :: DES_EDE3)) config
+    "des_eee2"    -> startHoleServer_ (Just (undefined :: DES_EEE2)) config
+    "des_ede2"    -> startHoleServer_ (Just (undefined :: DES_EDE2)) config
+
+    "twofish128"  -> startHoleServer_ (Just (undefined :: Twofish128)) config
+    "twofish192"  -> startHoleServer_ (Just (undefined :: Twofish192)) config
+    "twofish256"  -> startHoleServer_ (Just (undefined :: Twofish256)) config
+
+    "NONE"        -> startHoleServer_ (Nothing :: Maybe AES128) config
+    "none"        -> startHoleServer_ (Nothing :: Maybe AES128) config
+    method        -> error $ "Error: " ++ method ++ "not support"
+
+startHoleClient_
+  :: (Cipher cipher, BlockCipher cipher)
+  => Maybe cipher -> ByteString -> Config -> IO ()
+startHoleClient_ mcipher cid config =
+  case proxyMode config of
+    LocalToRemote -> startHoleClientLR mcipher cid config
+    RemoteToLocal -> startHoleClientRL mcipher cid config
+
+startHoleClient
+  :: ByteString -> Config -> IO ()
 startHoleClient cid config =
-  case proxyMode config of
-    LocalToRemote -> startHoleClientLR cid config
-    RemoteToLocal -> startHoleClientRL cid config
+  case cryptoCipher config of
+    "AES128"      -> startHoleClient_ (Just (undefined :: AES128)) cid config
+    "AES192"      -> startHoleClient_ (Just (undefined :: AES192)) cid config
+    "AES256"      -> startHoleClient_ (Just (undefined :: AES256)) cid config
 
-startHoleClientLR :: ByteString -> Config -> IO ()
-startHoleClientLR cid Config {..} = do
+    "Blowfish"    -> startHoleClient_ (Just (undefined :: Blowfish)) cid config
+    "Blowfish64"  -> startHoleClient_ (Just (undefined :: Blowfish64)) cid config
+    "Blowfish128" -> startHoleClient_ (Just (undefined :: Blowfish128)) cid config
+    "Blowfish256" -> startHoleClient_ (Just (undefined :: Blowfish256)) cid config
+    "Blowfish448" -> startHoleClient_ (Just (undefined :: Blowfish448)) cid config
+
+    "CAST5"       -> startHoleClient_ (Just (undefined :: CAST5)) cid config
+
+    "Camellia128" -> startHoleClient_ (Just (undefined :: Camellia128)) cid config
+
+    "DES"         -> startHoleClient_ (Just (undefined :: DES)) cid config
+
+    "DES_EEE3"    -> startHoleClient_ (Just (undefined :: DES_EEE3)) cid config
+    "DES_EDE3"    -> startHoleClient_ (Just (undefined :: DES_EDE3)) cid config
+    "DES_EEE2"    -> startHoleClient_ (Just (undefined :: DES_EEE2)) cid config
+    "DES_EDE2"    -> startHoleClient_ (Just (undefined :: DES_EDE2)) cid config
+
+    "Twofish128"  -> startHoleClient_ (Just (undefined :: Twofish128)) cid config
+    "Twofish192"  -> startHoleClient_ (Just (undefined :: Twofish192)) cid config
+    "Twofish256"  -> startHoleClient_ (Just (undefined :: Twofish256)) cid config
+
+    "aes128"      -> startHoleClient_ (Just (undefined :: AES128)) cid config
+    "aes192"      -> startHoleClient_ (Just (undefined :: AES192)) cid config
+    "aes256"      -> startHoleClient_ (Just (undefined :: AES256)) cid config
+
+    "blowfish"    -> startHoleClient_ (Just (undefined :: Blowfish)) cid config
+    "blowfish64"  -> startHoleClient_ (Just (undefined :: Blowfish64)) cid config
+    "blowfish128" -> startHoleClient_ (Just (undefined :: Blowfish128)) cid config
+    "blowfish256" -> startHoleClient_ (Just (undefined :: Blowfish256)) cid config
+    "blowfish448" -> startHoleClient_ (Just (undefined :: Blowfish448)) cid config
+
+    "cast5"       -> startHoleClient_ (Just (undefined :: CAST5)) cid config
+
+    "camellia128" -> startHoleClient_ (Just (undefined :: Camellia128)) cid config
+
+    "des"         -> startHoleClient_ (Just (undefined :: DES)) cid config
+
+    "des_eee3"    -> startHoleClient_ (Just (undefined :: DES_EEE3)) cid config
+    "des_ede3"    -> startHoleClient_ (Just (undefined :: DES_EDE3)) cid config
+    "des_eee2"    -> startHoleClient_ (Just (undefined :: DES_EEE2)) cid config
+    "des_ede2"    -> startHoleClient_ (Just (undefined :: DES_EDE2)) cid config
+
+    "twofish128"  -> startHoleClient_ (Just (undefined :: Twofish128)) cid config
+    "twofish192"  -> startHoleClient_ (Just (undefined :: Twofish192)) cid config
+    "twofish256"  -> startHoleClient_ (Just (undefined :: Twofish256)) cid config
+    "NONE"   -> startHoleClient_ (Nothing :: Maybe AES256) cid config
+    "none"   -> startHoleClient_ (Nothing :: Maybe AES256) cid config
+    method   -> error $ "Error: " ++ method ++ "not support"
+
+startHoleClientLR
+  :: (Cipher cipher, BlockCipher cipher)
+  => Maybe cipher -> ByteString -> Config -> IO ()
+startHoleClientLR mcipher cid Config {..} = do
   setupLog logLevel
+
   if logLevel == DEBUG then do
     let m0 = debugConfig "HoleClient" Raw
         m1 = debugConfig "OutClient" Raw
     runHoleClientLR cid (m0 $ socket holeSockPort) (m1 $ socket outSockPort)
   else
-    runHoleClientLR cid (socket holeSockPort) (socket outSockPort)
+    case mcipher of
+      Nothing -> runHoleClientLR cid (socket holeSockPort) (socket outSockPort)
+      Just cipher ->
+        runHoleClientLR cid
+          (makeCrypto cipher cryptoMethod cryptoKey $ socket holeSockPort)
+          (socket outSockPort)
 
-startHoleClientRL :: ByteString -> Config -> IO ()
-startHoleClientRL cid Config {..} = do
+startHoleClientRL
+  :: (Cipher cipher, BlockCipher cipher)
+  => Maybe cipher -> ByteString -> Config -> IO ()
+startHoleClientRL mcipher cid Config {..} = do
   setupLog logLevel
   if logLevel == DEBUG then do
     let m0 = debugConfig "HoleClient" Raw
         m1 = debugConfig "OutServer" Raw
     runHoleClientRL cid (m0 $ socket holeSockPort) (socketServer outSockPort) m1
   else
-    runHoleClientRL cid (socket holeSockPort) (socketServer outSockPort) id
+    case mcipher of
+      Nothing ->
+        runHoleClientRL cid (socket holeSockPort) (socketServer outSockPort) id
+      Just cipher ->
+        runHoleClientRL cid
+          (makeCrypto cipher cryptoMethod cryptoKey $ socket holeSockPort)
+          (socketServer outSockPort)
+          id
 
 runHoleClientLR
   :: (Transport tp0, Transport tp1)

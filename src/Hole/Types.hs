@@ -16,7 +16,7 @@ import           Data.ByteString      (ByteString)
 import qualified Data.ByteString      as B (length)
 import           Data.ByteString.Lazy (fromStrict)
 import qualified Data.ByteString.Lazy as LB (unpack)
-import           Data.Word            (Word16, Word32)
+import           Data.Word            (Word16)
 import           Hole.CRC16           (crc16)
 import           Metro.Class          (GetPacketId (..), RecvPacket (..),
                                        SendPacket (..), SetPacketId (..),

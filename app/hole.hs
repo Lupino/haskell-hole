@@ -12,6 +12,9 @@ data Flags = Flags
   , flagRL       :: Bool
   , flagLog      :: String
   , flagCID      :: String
+  , flagMethod   :: String
+  , flagCipher   :: String
+  , flagKey      :: String
   }
 
 parser :: Parser Flags
@@ -43,6 +46,24 @@ parser = Flags
     <> metavar "NAME"
     <> help "Client name"
     <> value "hole-client")
+  <*> strOption
+    (  long "method"
+    <> short 'm'
+    <> metavar "METHOD"
+    <> help "Crypto method. support cbc cfb ecb ctr. default cfb"
+    <> value "cfb")
+  <*> strOption
+    (  long "cipher"
+    <> short 'c'
+    <> metavar "CIPHER"
+    <> help "Crypto cipher. support aes128 aes192 aes256 blowfish blowfish64 blowfish128 blowfish256 blowfish448 cast5 camellia128 des des_eee3 des_ede3 des_eee2 des_ede2 twofish128 twofish192 twofish256 none. default none"
+    <> value "none")
+  <*> strOption
+    (  long "key"
+    <> short 'k'
+    <> metavar "KEY"
+    <> help "Crypto key."
+    <> value "none")
 
 main :: IO ()
 main = execParser opts >>= program
@@ -59,4 +80,7 @@ program Flags {..} =
     , outSockPort = flagAddr
     , logLevel = read flagLog
     , proxyMode = if flagRL then RemoteToLocal else LocalToRemote
+    , cryptoMethod = flagMethod
+    , cryptoCipher = flagCipher
+    , cryptoKey = flagKey
     }
