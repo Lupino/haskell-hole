@@ -2,6 +2,7 @@
 
 module Main where
 
+import           Data.Char           (toLower, toUpper)
 import           Hole
 import           Options.Applicative
 
@@ -36,7 +37,7 @@ parser = Flags
     (  long "log-level"
     <> short 'l'
     <> metavar "LEVEL"
-    <> help "Log level"
+    <> help "Log level. support DEBUG INFO NOTICE WARNING ERROR CRITICAL ALERT EMERGENCY"
     <> value "INFO")
   <*> strOption
     (  long "method"
@@ -69,10 +70,10 @@ program :: Flags -> IO ()
 program Flags {..} =
   startHoleServer Config
     { holeSockPort = flagHoleAddr
-    , outSockPort = flagAddr
-    , logLevel = read flagLog
-    , proxyMode = if flagRL then RemoteToLocal else LocalToRemote
-    , cryptoMethod = flagMethod
-    , cryptoCipher = flagCipher
-    , cryptoKey = flagKey
+    , outSockPort  = flagAddr
+    , logLevel     = read $ map toUpper flagLog
+    , proxyMode    = if flagRL then RemoteToLocal else LocalToRemote
+    , cryptoMethod = map toLower flagMethod
+    , cryptoCipher = map toLower flagCipher
+    , cryptoKey    = flagKey
     }

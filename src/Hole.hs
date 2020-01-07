@@ -176,31 +176,6 @@ startHoleServer_ mcipher config = do
 startHoleServer :: Config -> IO ()
 startHoleServer config =
   case cryptoCipher config of
-    "AES128"      -> startHoleServer_ (Just (undefined :: AES128)) config
-    "AES192"      -> startHoleServer_ (Just (undefined :: AES192)) config
-    "AES256"      -> startHoleServer_ (Just (undefined :: AES256)) config
-
-    "Blowfish"    -> startHoleServer_ (Just (undefined :: Blowfish)) config
-    "Blowfish64"  -> startHoleServer_ (Just (undefined :: Blowfish64)) config
-    "Blowfish128" -> startHoleServer_ (Just (undefined :: Blowfish128)) config
-    "Blowfish256" -> startHoleServer_ (Just (undefined :: Blowfish256)) config
-    "Blowfish448" -> startHoleServer_ (Just (undefined :: Blowfish448)) config
-
-    "CAST5"       -> startHoleServer_ (Just (undefined :: CAST5)) config
-
-    "Camellia128" -> startHoleServer_ (Just (undefined :: Camellia128)) config
-
-    "DES"         -> startHoleServer_ (Just (undefined :: DES)) config
-
-    "DES_EEE3"    -> startHoleServer_ (Just (undefined :: DES_EEE3)) config
-    "DES_EDE3"    -> startHoleServer_ (Just (undefined :: DES_EDE3)) config
-    "DES_EEE2"    -> startHoleServer_ (Just (undefined :: DES_EEE2)) config
-    "DES_EDE2"    -> startHoleServer_ (Just (undefined :: DES_EDE2)) config
-
-    "Twofish128"  -> startHoleServer_ (Just (undefined :: Twofish128)) config
-    "Twofish192"  -> startHoleServer_ (Just (undefined :: Twofish192)) config
-    "Twofish256"  -> startHoleServer_ (Just (undefined :: Twofish256)) config
-
     "aes128"      -> startHoleServer_ (Just (undefined :: AES128)) config
     "aes192"      -> startHoleServer_ (Just (undefined :: AES192)) config
     "aes256"      -> startHoleServer_ (Just (undefined :: AES256)) config
@@ -226,7 +201,6 @@ startHoleServer config =
     "twofish192"  -> startHoleServer_ (Just (undefined :: Twofish192)) config
     "twofish256"  -> startHoleServer_ (Just (undefined :: Twofish256)) config
 
-    "NONE"        -> startHoleServer_ (Nothing :: Maybe AES128) config
     "none"        -> startHoleServer_ (Nothing :: Maybe AES128) config
     method        -> error $ "Error: " ++ method ++ "not support"
 
@@ -242,31 +216,6 @@ startHoleClient
   :: ByteString -> Config -> IO ()
 startHoleClient cid config =
   case cryptoCipher config of
-    "AES128"      -> startHoleClient_ (Just (undefined :: AES128)) cid config
-    "AES192"      -> startHoleClient_ (Just (undefined :: AES192)) cid config
-    "AES256"      -> startHoleClient_ (Just (undefined :: AES256)) cid config
-
-    "Blowfish"    -> startHoleClient_ (Just (undefined :: Blowfish)) cid config
-    "Blowfish64"  -> startHoleClient_ (Just (undefined :: Blowfish64)) cid config
-    "Blowfish128" -> startHoleClient_ (Just (undefined :: Blowfish128)) cid config
-    "Blowfish256" -> startHoleClient_ (Just (undefined :: Blowfish256)) cid config
-    "Blowfish448" -> startHoleClient_ (Just (undefined :: Blowfish448)) cid config
-
-    "CAST5"       -> startHoleClient_ (Just (undefined :: CAST5)) cid config
-
-    "Camellia128" -> startHoleClient_ (Just (undefined :: Camellia128)) cid config
-
-    "DES"         -> startHoleClient_ (Just (undefined :: DES)) cid config
-
-    "DES_EEE3"    -> startHoleClient_ (Just (undefined :: DES_EEE3)) cid config
-    "DES_EDE3"    -> startHoleClient_ (Just (undefined :: DES_EDE3)) cid config
-    "DES_EEE2"    -> startHoleClient_ (Just (undefined :: DES_EEE2)) cid config
-    "DES_EDE2"    -> startHoleClient_ (Just (undefined :: DES_EDE2)) cid config
-
-    "Twofish128"  -> startHoleClient_ (Just (undefined :: Twofish128)) cid config
-    "Twofish192"  -> startHoleClient_ (Just (undefined :: Twofish192)) cid config
-    "Twofish256"  -> startHoleClient_ (Just (undefined :: Twofish256)) cid config
-
     "aes128"      -> startHoleClient_ (Just (undefined :: AES128)) cid config
     "aes192"      -> startHoleClient_ (Just (undefined :: AES192)) cid config
     "aes256"      -> startHoleClient_ (Just (undefined :: AES256)) cid config
@@ -291,7 +240,6 @@ startHoleClient cid config =
     "twofish128"  -> startHoleClient_ (Just (undefined :: Twofish128)) cid config
     "twofish192"  -> startHoleClient_ (Just (undefined :: Twofish192)) cid config
     "twofish256"  -> startHoleClient_ (Just (undefined :: Twofish256)) cid config
-    "NONE"   -> startHoleClient_ (Nothing :: Maybe AES256) cid config
     "none"   -> startHoleClient_ (Nothing :: Maybe AES256) cid config
     method   -> error $ "Error: " ++ method ++ "not support"
 
