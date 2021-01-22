@@ -88,7 +88,7 @@ packet = Packet 0 0
 getPacketData :: Packet -> ByteString
 getPacketData = packetData
 
-data PacketError = PacketMagicNotMatch | PacketDecodeError String | PacketCrcNotMatch
+data PacketError = PacketDecodeError String | PacketCrcNotMatch
   deriving (Show, Eq, Ord)
 
 instance Exception PacketError

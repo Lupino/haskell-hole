@@ -44,10 +44,6 @@ instance MonadTrans (OutServerT serv) where
   lift = OutServerT . lift
 
 instance MonadUnliftIO m => MonadUnliftIO (OutServerT serv m) where
-  askUnliftIO = OutServerT $
-    ReaderT $ \r ->
-      withUnliftIO $ \u ->
-        return (UnliftIO (unliftIO u . runOutServerT r))
   withRunInIO inner = OutServerT $
     ReaderT $ \r ->
       withRunInIO $ \run ->
