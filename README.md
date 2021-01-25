@@ -22,7 +22,7 @@ The hole support protocol `tcp` `tcp6` `udp` `udp6` and `unix socket`.
 
 ## Compile with nix
 
-    $(nix-build --no-link -A fullBuildScript)
+    nix-build default.nix
 
 
 ## Compile with stack
