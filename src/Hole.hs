@@ -13,13 +13,15 @@ module Hole
 
 import           Crypto.Cipher.AES
 import           Crypto.Cipher.Blowfish
-import           Crypto.Cipher.Camellia
 import           Crypto.Cipher.CAST5
+import           Crypto.Cipher.Camellia
 import           Crypto.Cipher.DES
 import           Crypto.Cipher.TripleDES
 import           Crypto.Cipher.Twofish
 import           Crypto.Cipher.Types     (BlockCipher (..), Cipher (..))
 import           Data.ByteString         (ByteString)
+import           Data.IOHashMap          (IOHashMap)
+import qualified Data.IOHashMap          as HM (elems)
 import           Data.List               (sortOn)
 import           Data.Word               (Word16)
 import           Hole.Node               (HoleEnv, HoleSessionT, initHoleEnv,
@@ -30,8 +32,6 @@ import           Hole.Types
 import           Metro.Class             (Servable (STP, ServerConfig),
                                           Transport (TransportConfig))
 import           Metro.Conn              (initConnEnv, receive, runConnT, send)
-import           Metro.IOHashMap         (IOHashMap)
-import qualified Metro.IOHashMap         as HM (elems)
 import           Metro.Node              (SessionMode (..), getSessionSize1,
                                           withSessionT)
 import           Metro.Server            (ServerEnv, getNodeEnvList,

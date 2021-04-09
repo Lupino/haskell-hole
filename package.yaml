@@ -40,6 +40,7 @@ library:
   - cryptonite
   - metro-transport-crypto
   - text
+  - hashmap-io
 
 executables:
   holed:

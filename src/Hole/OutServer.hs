@@ -15,10 +15,11 @@ module Hole.OutServer
   , initOutServerEnv
   ) where
 
-import           Control.Monad              (forever, mzero, unless, void, when)
+
+import           Control.Monad              (forever, unless, when)
+import           Control.Monad.Cont         (callCC, runContT)
 import           Control.Monad.Reader.Class (MonadReader (ask), asks)
 import           Control.Monad.Trans.Class  (MonadTrans, lift)
-import           Control.Monad.Trans.Maybe  (runMaybeT)
 import           Control.Monad.Trans.Reader (ReaderT (..), runReaderT)
 import           Data.Either                (isLeft)
 import           Metro.Class                (Servable (..), TransportConfig)
@@ -68,13 +69,13 @@ serveForever
 serveForever action = do
   liftIO $ infoM "Hole.OutServer" "HoleOutServer started"
   state <- asks outState
-  void . runMaybeT . forever $ do
+  (`runContT` pure) $ callCC $ \exit -> forever $ do
     e <- lift $ tryServeOnce action
     when (isLeft e) $ do
       liftIO $ errorM "Hole.OutServer" $ "Error: " ++ show e
-      mzero
+      exit ()
     alive <- readTVarIO state
-    unless alive mzero
+    unless alive $ exit ()
   liftIO $ infoM "Hole.OutServer" "HoleOutServer closed"
 
 tryServeOnce

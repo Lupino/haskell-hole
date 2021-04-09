@@ -17,7 +17,7 @@
 #
 # resolver: ./custom-snapshot.yaml
 # resolver: https://example.com/snapshots/2018-01-01.yaml
-resolver: nightly-2021-01-20
+resolver: lts-17.9
 
 # User packages to be built.
 # Various formats can be used as shown in the example below.
@@ -42,9 +42,9 @@ packages:
 #
 # extra-deps: []
 extra-deps:
-- hex-0.2.0@sha256:197d2561d2e216c4ead035b4911dabc6e678ac6257cb71b64e324c822f6f9f5a,726
-- metro-0.1.0.4@sha256:8adbca84cf23d4f75babc6f836a6126fcfc6ee1e89e0751b6db62e029205e6a9,1344
-- metro-socket-0.1.0.0@sha256:18192146073182bd7fda8f37c5f1cca3516603bb858c737a85f2590a052abc3b,1298
+- hashmap-io-0.1.0.0@sha256:da5142ba7362d64a3ab99174286683f7c2c6437129904397d34a9769d5757aa9,1070
+- metro-0.1.0.5@sha256:9ca3bc0fc3dd06722cb503b9bf74be293831d3228bd8124fc6b67339e84d832f,1312
+- metro-socket-0.1.0.1@sha256:f35bfe4543b231637496312ccf7dd36d3230001ddfc7df98e611c03948e40aff,1315
 - metro-transport-crypto-0.1.0.0@sha256:d849f1c5fd20a8cb5f74018702dccce8dd191f1ee65315d0442040589acd946f,1551
 
 # Override default flag values for local packages and extra-deps

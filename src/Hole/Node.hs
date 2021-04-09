@@ -14,24 +14,23 @@ module Hole.Node
   , pipeHandler
   ) where
 
-import           Control.Monad             (forever, mzero, void)
-import           Control.Monad.Trans.Class (lift)
-import           Control.Monad.Trans.Maybe (runMaybeT)
-import           Data.ByteString           (ByteString)
-import           Data.Word                 (Word16)
-import           Hole.Types                (Packet, getPacketData,
-                                            maxDataLength, packet)
-import           Metro.Class               (Transport (..))
-import           Metro.Conn                (ConnEnv)
-import           Metro.Node                (NodeEnv1, NodeT, SessionMode (..),
-                                            initEnv1, request, runNodeT1,
-                                            setSessionMode, startNodeT,
-                                            stopNodeT)
-import           Metro.Session             (SessionT, makeResponse_, receive,
-                                            send)
-import           System.Log.Logger         (errorM)
+
+import           Control.Monad       (forever, void)
+import           Control.Monad.Cont  (callCC, runContT)
+import           Control.Monad.Trans (lift)
+import           Data.ByteString     (ByteString)
+import           Data.Word           (Word16)
+import           Hole.Types          (Packet, getPacketData, maxDataLength,
+                                      packet)
+import           Metro.Class         (Transport (..))
+import           Metro.Conn          (ConnEnv)
+import           Metro.Node          (NodeEnv1, NodeT, SessionMode (..),
+                                      initEnv1, request, runNodeT1,
+                                      setSessionMode, startNodeT, stopNodeT)
+import           Metro.Session       (SessionT, makeResponse_, receive, send)
+import           System.Log.Logger   (errorM)
 import           UnliftIO
-import           UnliftIO.Concurrent       (threadDelay)
+import           UnliftIO.Concurrent (threadDelay)
 
 type HoleT = NodeT () ByteString Word16 Packet
 
@@ -64,13 +63,13 @@ runHoleT  = runNodeT1
 
 checkAlive :: (MonadUnliftIO m, Transport tp) => HoleT tp m ()
 checkAlive = void . async $ do
-  void . runMaybeT . forever $ do
+  (`runContT` pure) $ callCC $ \exit -> forever $ do
     threadDelay 10000000 -- 10s
     r <- lift . tryAny $ request (Just 10) $ packet "PING"
     case r of
       Left e -> do
         liftIO $ errorM "Hole.Node" $ "CheckAlive Error: " ++ show e
-        mzero
+        exit ()
       Right _ -> return ()
 
   stopNodeT
@@ -86,28 +85,29 @@ pipeHandler
 pipeHandler config = do
   tp1 <- liftIO $ newTransport config
 
-  io1 <- async . void . runMaybeT . forever $ do
+  io1 <- async . (`runContT` pure) $ callCC $ \exit -> forever $ do
+
     !body <- lift $ fmap getPacketData <$> receive
     case body of
-      Nothing    -> mzero
-      Just ""    -> mzero
-      Just "EOF" -> mzero
+      Nothing    -> exit ()
+      Just ""    -> exit ()
+      Just "EOF" -> exit ()
       Just bs    -> do
         r <- liftIO $ tryAny $ sendData tp1 bs
         case r of
           Left e -> do
             liftIO $ errorM "Hole.Node" $ "sendData Error: " ++ show e
-            mzero
+            exit ()
           Right _ -> pure ()
 
-  io0 <- async . void . runMaybeT . forever $ do
+  io0 <- async . (`runContT` pure) $ callCC $ \exit -> forever $ do
     !r <- liftIO $ tryAny $ recvData tp1 maxDataLength
     case r of
       Left e -> do
         liftIO $ errorM "Hole.Node" $ "recvData Error: " ++ show e
-        mzero
-      Right ""     -> mzero
-      Right "EOF"  -> mzero
+        exit ()
+      Right ""     -> exit ()
+      Right "EOF"  -> exit ()
       Right bs     -> lift $ send $ packet bs
 
   void $ waitAnyCancel [io0, io1]
