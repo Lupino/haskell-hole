@@ -1,5 +1,6 @@
 {-# LANGUAGE FlexibleContexts           #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE LambdaCase                 #-}
 {-# LANGUAGE MultiParamTypeClasses      #-}
 {-# LANGUAGE RecordWildCards            #-}
 {-# LANGUAGE ScopedTypeVariables        #-}
@@ -90,10 +91,9 @@ serveOnce
   -> OutServerT serv m ()
 serveOnce action = do
   OutServerEnv {..} <- ask
-  servOnce outServer $ \r ->
-    case r of
-      Nothing       -> return ()
-      Just (_, stp) -> lift $ action stp
+  servOnce outServer $ \case
+    Nothing       -> return ()
+    Just (_, stp) -> lift $ action stp
 
 startOutServer
   :: (MonadUnliftIO m, Servable serv)
