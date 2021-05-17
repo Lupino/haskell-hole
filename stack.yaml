@@ -17,7 +17,7 @@
 #
 # resolver: ./custom-snapshot.yaml
 # resolver: https://example.com/snapshots/2018-01-01.yaml
-resolver: lts-17.9
+resolver: lts-17.11
 
 # User packages to be built.
 # Various formats can be used as shown in the example below.
@@ -42,10 +42,13 @@ packages:
 #
 # extra-deps: []
 extra-deps:
-- hashmap-io-0.1.0.0@sha256:da5142ba7362d64a3ab99174286683f7c2c6437129904397d34a9769d5757aa9,1070
-- metro-0.1.0.5@sha256:9ca3bc0fc3dd06722cb503b9bf74be293831d3228bd8124fc6b67339e84d832f,1312
-- metro-socket-0.1.0.1@sha256:f35bfe4543b231637496312ccf7dd36d3230001ddfc7df98e611c03948e40aff,1315
-- metro-transport-crypto-0.1.0.0@sha256:d849f1c5fd20a8cb5f74018702dccce8dd191f1ee65315d0442040589acd946f,1551
+- git: https://github.com/Lupino/metro.git
+  commit: 1cf398f522b5c057fe09eb390acf006e5198ab86
+  subdirs:
+  - .
+  - metro-socket
+  - hashmap-io
+  - metro-transport-crypto
 
 # Override default flag values for local packages and extra-deps
 # flags: {}

@@ -83,7 +83,7 @@ pipeHandler
   :: (MonadUnliftIO m, Transport tp, Transport tp1)
   => TransportConfig tp1 -> HoleSessionT tp m ()
 pipeHandler config = do
-  tp1 <- liftIO $ newTransport config
+  tp1 <- liftIO $ newTP config
 
   io1 <- async . (`runContT` pure) $ callCC $ \exit -> forever $ do
 
@@ -112,4 +112,4 @@ pipeHandler config = do
 
   void $ waitAnyCancel [io0, io1]
   send $ packet "EOF"
-  liftIO $ closeTransport tp1
+  liftIO $ closeTP tp1
