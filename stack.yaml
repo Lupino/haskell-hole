@@ -43,7 +43,7 @@ packages:
 # extra-deps: []
 extra-deps:
 - git: https://github.com/Lupino/metro.git
-  commit: 5dda17c849a01069c1d8c7ae3c4646359ae40e00
+  commit: 17af62292813a3d6f9b4285a89b2db6e60fd0ea6
   subdirs:
   - .
   - metro-socket
