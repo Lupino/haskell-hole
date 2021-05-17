@@ -38,7 +38,7 @@ instance Binary PacketLength where
   put (PacketLength l) = putWord32be $ fromIntegral l
 
 
-data PacketType = Ping | Trns | Eof
+data PacketType = Ping | Trns | Eof | Pong
   deriving (Show, Eq)
 
 
@@ -49,10 +49,12 @@ instance Binary PacketType where
       0 -> pure Ping
       1 -> pure Trns
       2 -> pure Eof
+      3 -> pure Pong
       _ -> fail $ "not such type " ++ show v
   put Ping = putWord8 0
   put Trns = putWord8 1
   put Eof  = putWord8 2
+  put Pong = putWord8 3
 
 
 data Packet = Packet
@@ -117,4 +119,4 @@ data PacketError = PacketDecodeError String | PacketCrcNotMatch
 instance Exception PacketError
 
 formatMessage :: String -> String
-formatMessage = B.unpack . toStrict . encode . preparePacket . packet Ping . B.pack
+formatMessage = B.unpack . toStrict . encode . preparePacket . packet Pong . B.pack

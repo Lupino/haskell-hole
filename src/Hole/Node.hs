@@ -54,12 +54,10 @@ sessionGen start end = do
 pongHandler :: (MonadUnliftIO m, Transport tp) => HoleSessionT tp m ()
 pongHandler = makeResponse_ $ \pkt ->
   case packetType pkt of
-    Ping -> Nothing
+    Ping -> Just $ packet Pong ""
     Eof  -> Nothing
-    Trns ->
-      case getPacketData pkt of
-        "" -> Nothing
-        _  -> Just $ packet Eof ""
+    Trns -> Nothing
+    Pong -> Nothing
 
 runHoleT :: Monad m => HoleEnv tp -> HoleT tp m a -> m a
 runHoleT  = runNodeT1
@@ -68,7 +66,7 @@ checkAlive :: (MonadUnliftIO m, Transport tp) => HoleT tp m ()
 checkAlive = void . async $ do
   (`runContT` pure) $ callCC $ \exit -> forever $ do
     threadDelay 10000000 -- 10s
-    r <- lift . tryAny $ request (Just 10) $ packet Trns "PING"
+    r <- lift . tryAny $ request (Just 10) $ packet Ping ""
     case r of
       Left e -> do
         liftIO $ errorM "Hole.Node" $ "CheckAlive Error: " ++ show e
@@ -95,17 +93,15 @@ pipeHandler config = do
       Just pkt     ->
         case packetType pkt of
           Ping -> pure ()
-          Eof -> exit ()
-          Trns ->
-            case getPacketData pkt of
-              "" -> exit ()
-              bs -> do
-                r <- liftIO $ tryAny $ sendData tp1 bs
-                case r of
-                  Left e -> do
-                    liftIO $ errorM "Hole.Node" $ "sendData Error: " ++ show e
-                    exit ()
-                  Right _ -> pure ()
+          Eof  -> exit ()
+          Pong -> pure ()
+          Trns -> do
+            r <- liftIO $ tryAny $ sendData tp1 $ getPacketData pkt
+            case r of
+              Left e -> do
+                liftIO $ errorM "Hole.Node" $ "sendData Error: " ++ show e
+                exit ()
+              Right _ -> pure ()
 
   io0 <- async . (`runContT` pure) $ callCC $ \exit -> forever $ do
     !r <- liftIO $ tryAny $ recvData tp1 maxDataLength
@@ -117,5 +113,5 @@ pipeHandler config = do
       Right bs -> lift $ send $ packet Trns bs
 
   void $ waitAnyCancel [io0, io1]
-  send $ packet Trns ""
+  send $ packet Eof ""
   liftIO $ closeTP tp1
