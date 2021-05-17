@@ -2,6 +2,7 @@
 
 module Hole.Types
   ( Packet (..)
+  , PacketType (..)
   , packet
   , getPacketData
   , maxDataLength
@@ -10,7 +11,7 @@ module Hole.Types
 
 import           Control.Exception     (Exception)
 import           Data.Binary           (Binary (..), decode, decodeOrFail,
-                                        encode)
+                                        encode, getWord8, putWord8)
 import           Data.Binary.Get       (getByteString, getWord16be, getWord32be)
 import           Data.Binary.Put       (putByteString, putWord16be, putWord32be)
 import           Data.ByteString       (ByteString)
@@ -37,9 +38,27 @@ instance Binary PacketLength where
   put (PacketLength l) = putWord32be $ fromIntegral l
 
 
+data PacketType = Ping | Trns | Eof
+  deriving (Show, Eq)
+
+
+instance Binary PacketType where
+  get = do
+    v <- getWord8
+    case v of
+      0 -> pure Ping
+      1 -> pure Trns
+      2 -> pure Eof
+      _ -> fail $ "not such type " ++ show v
+  put Ping = putWord8 0
+  put Trns = putWord8 1
+  put Eof  = putWord8 2
+
+
 data Packet = Packet
   { packetId   :: !Word16
   , packetCrc  :: !Word16
+  , packetType :: !PacketType
   , packetData :: !ByteString
   }
   deriving (Show, Eq)
@@ -49,11 +68,13 @@ instance Binary Packet where
     PacketLength len <- get
     pid <- getWord16be
     crc <- getWord16be
-    Packet pid crc <$> getByteString (len - 4)
-  put (Packet pid crc body) = do
-    put $ PacketLength $ B.length body + 4
+    ptp <- get
+    Packet pid crc ptp <$> getByteString (len - 5)
+  put (Packet pid crc ptp body) = do
+    put $ PacketLength $ B.length body + 5
     putWord16be pid
     putWord16be crc
+    put ptp
     putByteString body
 
 preparePacket :: Packet -> Packet
@@ -84,7 +105,7 @@ instance GetPacketId Word16 Packet where
 instance SetPacketId Word16 Packet where
   setPacketId k pkt = pkt { packetId = k }
 
-packet :: ByteString -> Packet
+packet :: PacketType -> ByteString -> Packet
 packet = Packet 0 0
 
 getPacketData :: Packet -> ByteString
@@ -96,4 +117,4 @@ data PacketError = PacketDecodeError String | PacketCrcNotMatch
 instance Exception PacketError
 
 formatMessage :: String -> String
-formatMessage = B.unpack . toStrict . encode . preparePacket . packet . B.pack
+formatMessage = B.unpack . toStrict . encode . preparePacket . packet Ping . B.pack

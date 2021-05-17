@@ -20,8 +20,8 @@ import           Control.Monad.Cont  (callCC, runContT)
 import           Control.Monad.Trans (lift)
 import           Data.ByteString     (ByteString)
 import           Data.Word           (Word16)
-import           Hole.Types          (Packet, getPacketData, maxDataLength,
-                                      packet)
+import           Hole.Types          (Packet (..), PacketType (..),
+                                      getPacketData, maxDataLength, packet)
 import           Metro.Class         (Transport (..))
 import           Metro.Conn          (ConnEnv)
 import           Metro.Node          (NodeEnv1, NodeT, SessionMode (..),
@@ -53,10 +53,13 @@ sessionGen start end = do
 
 pongHandler :: (MonadUnliftIO m, Transport tp) => HoleSessionT tp m ()
 pongHandler = makeResponse_ $ \pkt ->
-  case getPacketData pkt of
-    ""    -> Nothing
-    "EOF" -> Nothing
-    _     -> Just $ packet "EOF"
+  case packetType pkt of
+    Ping -> Nothing
+    Eof  -> Nothing
+    Trns ->
+      case getPacketData pkt of
+        "" -> Nothing
+        _  -> Just $ packet Eof ""
 
 runHoleT :: Monad m => HoleEnv tp -> HoleT tp m a -> m a
 runHoleT  = runNodeT1
@@ -65,7 +68,7 @@ checkAlive :: (MonadUnliftIO m, Transport tp) => HoleT tp m ()
 checkAlive = void . async $ do
   (`runContT` pure) $ callCC $ \exit -> forever $ do
     threadDelay 10000000 -- 10s
-    r <- lift . tryAny $ request (Just 10) $ packet "PING"
+    r <- lift . tryAny $ request (Just 10) $ packet Trns "PING"
     case r of
       Left e -> do
         liftIO $ errorM "Hole.Node" $ "CheckAlive Error: " ++ show e
@@ -86,19 +89,23 @@ pipeHandler config = do
   tp1 <- liftIO $ newTP config
 
   io1 <- async . (`runContT` pure) $ callCC $ \exit -> forever $ do
-
-    !body <- lift $ fmap getPacketData <$> receive
-    case body of
-      Nothing    -> exit ()
-      Just ""    -> exit ()
-      Just "EOF" -> exit ()
-      Just bs    -> do
-        r <- liftIO $ tryAny $ sendData tp1 bs
-        case r of
-          Left e -> do
-            liftIO $ errorM "Hole.Node" $ "sendData Error: " ++ show e
-            exit ()
-          Right _ -> pure ()
+    !mpkt <- lift receive
+    case mpkt of
+      Nothing -> exit ()
+      Just pkt     ->
+        case packetType pkt of
+          Ping -> pure ()
+          Eof -> exit ()
+          Trns ->
+            case getPacketData pkt of
+              "" -> exit ()
+              bs -> do
+                r <- liftIO $ tryAny $ sendData tp1 bs
+                case r of
+                  Left e -> do
+                    liftIO $ errorM "Hole.Node" $ "sendData Error: " ++ show e
+                    exit ()
+                  Right _ -> pure ()
 
   io0 <- async . (`runContT` pure) $ callCC $ \exit -> forever $ do
     !r <- liftIO $ tryAny $ recvData tp1 maxDataLength
@@ -106,10 +113,9 @@ pipeHandler config = do
       Left e -> do
         liftIO $ errorM "Hole.Node" $ "recvData Error: " ++ show e
         exit ()
-      Right ""     -> exit ()
-      Right "EOF"  -> exit ()
-      Right bs     -> lift $ send $ packet bs
+      Right "" -> exit ()
+      Right bs -> lift $ send $ packet Trns bs
 
   void $ waitAnyCancel [io0, io1]
-  send $ packet "EOF"
+  send $ packet Trns ""
   liftIO $ closeTP tp1

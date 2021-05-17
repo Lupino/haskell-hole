@@ -312,7 +312,7 @@ newHoleClient
   -> IO (Async (), HoleEnv tp)
 newHoleClient cid config sess = do
   connEnv <- initConnEnv config
-  runConnT connEnv $ send $ packet cid
+  runConnT connEnv $ send $ packet Trns cid
   env0 <- initHoleEnv connEnv cid
   io <- async $ startHoleT env0 sess
   return (io, env0)
