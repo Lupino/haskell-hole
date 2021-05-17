@@ -5,23 +5,25 @@ module Hole.Types
   , packet
   , getPacketData
   , maxDataLength
+  , formatMessage
   ) where
 
-import           Control.Exception    (Exception)
-import           Data.Binary          (Binary (..), decode, decodeOrFail,
-                                       encode)
-import           Data.Binary.Get      (getByteString, getWord16be, getWord32be)
-import           Data.Binary.Put      (putByteString, putWord16be, putWord32be)
-import           Data.ByteString      (ByteString)
-import qualified Data.ByteString      as B (length)
-import           Data.ByteString.Lazy (fromStrict)
-import qualified Data.ByteString.Lazy as LB (unpack)
-import           Data.Word            (Word16)
-import           Hole.CRC16           (crc16)
-import           Metro.Class          (GetPacketId (..), RecvPacket (..),
-                                       SendPacket (..), SetPacketId (..),
-                                       sendBinary)
-import           UnliftIO             (throwIO)
+import           Control.Exception     (Exception)
+import           Data.Binary           (Binary (..), decode, decodeOrFail,
+                                        encode)
+import           Data.Binary.Get       (getByteString, getWord16be, getWord32be)
+import           Data.Binary.Put       (putByteString, putWord16be, putWord32be)
+import           Data.ByteString       (ByteString)
+import qualified Data.ByteString       as B (length)
+import qualified Data.ByteString.Char8 as B (pack, unpack)
+import           Data.ByteString.Lazy  (fromStrict, toStrict)
+import qualified Data.ByteString.Lazy  as LB (unpack)
+import           Data.Word             (Word16)
+import           Hole.CRC16            (crc16)
+import           Metro.Class           (GetPacketId (..), RecvPacket (..),
+                                        SendPacket (..), SetPacketId (..),
+                                        sendBinary)
+import           UnliftIO              (throwIO)
 
 maxDataLength :: Int
 maxDataLength = 41943040 -- 40m
@@ -92,3 +94,6 @@ data PacketError = PacketDecodeError String | PacketCrcNotMatch
   deriving (Show, Eq, Ord)
 
 instance Exception PacketError
+
+formatMessage :: String -> String
+formatMessage = B.unpack . toStrict . encode . preparePacket . packet . B.pack
