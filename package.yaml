@@ -54,7 +54,7 @@ executables:
     - haskell-hole
     - optparse-applicative
   hole:
-    main:                hole.hs
+    main:                hole-exe.hs
     source-dirs:         app
     ghc-options:
     - -threaded

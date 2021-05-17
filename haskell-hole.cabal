@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 6277042b4a1b97f7cdc1770dfaad914e84c5178bbd5f0e73ab5bc1d5b69bd6ec
+-- hash: f7f7f4493b6f3424b5c3159c79324e1c41d073d6b2099aca316e03e26a63ff12
 
 name:           haskell-hole
 version:        0.1.0.0
@@ -54,7 +54,7 @@ library
   default-language: Haskell2010
 
 executable hole
-  main-is: hole.hs
+  main-is: hole-exe.hs
   other-modules:
       Paths_haskell_hole
   hs-source-dirs:
