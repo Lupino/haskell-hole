@@ -2,12 +2,14 @@ module Main where
 
 
 import           Control.Monad         (forever)
-import qualified Data.ByteString.Char8 as B (putStr)
-import           Hole.Types            (Packet (..))
+import qualified Data.ByteString.Char8 as B (pack, putStr, unpack)
+import           Hole.Types            (Packet (..), PacketType (..),
+                                        formatMessage)
 import           Metro.Conn            (initConnEnv, receive, runConnT)
-import           Metro.Socket          (bindTo)
+import           Metro.Socket          (bindTo, getDatagramAddr)
 import           Metro.TP.BS           (bsTPConfig, newBSHandle)
-import           Metro.TP.UDPSocket    (recvFrom)
+import           Metro.TP.UDPSocket    (doSendAll, recvFrom)
+import           Network.Socket        (addrAddress)
 import           System.Environment    (getArgs)
 import           UnliftIO
 
@@ -47,5 +49,5 @@ main = do
             case maddr of
               Nothing -> pure ()
               Just addrInfo ->
-                doSendAll (getSocket serv) (addrAddress addrInfo) . B.pack $ formatMessage NatEcho $ show addr
+                doSendAll sock (addrAddress addrInfo) . B.pack $ formatMessage NatEcho $ show addr
           _ -> pure ()

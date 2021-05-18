@@ -78,6 +78,7 @@ executables:
     - metro
     - bytestring
     - unliftio
+    - network
 
 tests:
   haskell-hole-test:
