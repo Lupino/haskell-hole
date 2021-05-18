@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 78223b414980c97d03beae8c1ea2625801366eb4af760c0eaad8b8ea9be7c155
+-- hash: f1cb45b9f13c922ab30e298d8b6aadaf055d36c0255a294ebb3f93cb1270247d
 
 name:           haskell-hole
 version:        0.1.0.0
@@ -47,6 +47,7 @@ library
     , metro-socket
     , metro-transport-crypto
     , mtl
+    , network
     , text
     , transformers
     , unliftio

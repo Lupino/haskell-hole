@@ -42,6 +42,8 @@ library:
   - text
   - hashmap-io
 
+  - network
+
 executables:
   holed:
     main:                holed.hs

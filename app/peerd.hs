@@ -35,8 +35,17 @@ main = do
       Nothing         -> pure ()
       Just (Left err) -> print err
       Just (Right pkt) -> do
-        putStr "Peer Client: "
-        B.putStr $ packetData pkt
-        putStr "@"
-        putStr $ show addr
-        putStrLn " connected"
+        case packetType pkt of
+          PeerReg -> do
+            putStr "Peer Client: "
+            B.putStr $ packetData pkt
+            putStr "@"
+            putStr $ show addr
+            putStrLn " connected"
+          NatEcho -> do
+            maddr <- getDatagramAddr $ B.unpack bs
+            case maddr of
+              Nothing -> pure ()
+              Just addrInfo ->
+                doSendAll (getSocket serv) (addrAddress addrInfo) . B.pack $ formatMessage NatEcho $ show addr
+          _ -> pure ()

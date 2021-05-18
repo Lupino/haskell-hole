@@ -5,7 +5,7 @@ module Main where
 import           Data.Char           (toLower, toUpper)
 import           Data.List           (isPrefixOf)
 import           Hole
-import           Hole.Types          (formatMessage)
+import           Hole.Types          (PacketType (..), formatMessage)
 import           Options.Applicative
 
 data Flags = Flags
@@ -102,5 +102,5 @@ program Flags {..} =
 
   where holeInfo =
           if "udp" `isPrefixOf` flagHoleAddr then
-            "?peer=" ++ flagPeer ++ "&keepalive=" ++ show flagPeerAlive ++ "&message=" ++ formatMessage flagName
+            "?peer=" ++ flagPeer ++ "&keepalive=" ++ show flagPeerAlive ++ "&message=" ++ formatMessage PeerReg flagName
           else ""
