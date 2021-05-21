@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: fd3ce22a27348690e5fee19b5b80bae9515b89878fc4e9f91567b8e2821b3a60
+-- hash: 240fc56481b8924550651397bdf2611c7ccaf6edb7958ee2f60ad3b9b71444ae
 
 name:           haskell-hole
 version:        0.1.0.0
@@ -41,8 +41,8 @@ library
     , binary
     , bytestring
     , cryptonite
-    , hashmap-io
     , hslogger
+    , map-io
     , metro
     , metro-socket
     , metro-transport-crypto

@@ -40,7 +40,7 @@ library:
   - cryptonite
   - metro-transport-crypto
   - text
-  - hashmap-io
+  - map-io
 
   - network
 

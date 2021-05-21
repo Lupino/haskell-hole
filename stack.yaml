@@ -43,11 +43,11 @@ packages:
 # extra-deps: []
 extra-deps:
 - git: https://github.com/Lupino/metro.git
-  commit: 17af62292813a3d6f9b4285a89b2db6e60fd0ea6
+  commit: 7e49dd96886c6a5ebe3cba37238922833c096fa3
   subdirs:
   - .
+  - map-io
   - metro-socket
-  - hashmap-io
   - metro-transport-crypto
 
 # Override default flag values for local packages and extra-deps

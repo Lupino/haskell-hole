@@ -21,8 +21,8 @@ import           Crypto.Cipher.Twofish
 import           Crypto.Cipher.Types     (BlockCipher (..), Cipher (..))
 import           Data.ByteString         (ByteString)
 import qualified Data.ByteString.Char8   as B (pack, unpack)
-import           Data.IOHashMap          (IOHashMap)
-import qualified Data.IOHashMap          as HM (elems)
+import           Data.IOMap              (IOMap)
+import qualified Data.IOMap              as Map (elems)
 import           Data.List               (sortOn)
 import           Data.Word               (Word16)
 import           Hole.Node               (HoleEnv, HoleSessionT, initHoleEnv,
@@ -66,7 +66,7 @@ data Config = Config
   }
 
 type HoleServerEnv serv = ServerEnv serv () ByteString Word16 Packet
-type HoleNodeList tp = IOHashMap ByteString (HoleEnv tp)
+type HoleNodeList tp = IOMap ByteString (HoleEnv tp)
 
 newHoleServer
   :: (Servable serv, Transport tp)
@@ -95,7 +95,7 @@ doAction
   :: (MonadUnliftIO m, Transport tp0, Transport tp1)
   => HoleNodeList tp0 -> TransportConfig tp1 -> m ()
 doAction nodeList config = do
-  nl <- mapM mapFunc =<< HM.elems nodeList
+  nl <- mapM mapFunc =<< Map.elems nodeList
   case sortOn fst nl of
     [] -> liftIO $ errorM "Hole" "Client not found."
     ((_, nodeEnv):_) ->
