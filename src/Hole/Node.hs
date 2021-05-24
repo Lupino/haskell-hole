@@ -54,12 +54,10 @@ sessionGen start end = do
 pongHandler :: (MonadUnliftIO m, Transport tp) => HoleSessionT tp m ()
 pongHandler = makeResponse_ $ \pkt ->
   case packetType pkt of
-    Ping    -> Just $ packet Pong ""
-    Eof     -> Nothing
-    Trns    -> Nothing
-    Pong    -> Nothing
-    PeerReg -> Nothing
-    NatEcho -> Nothing
+    Ping -> Just $ packet Pong ""
+    Eof  -> Nothing
+    Trns -> Nothing
+    Pong -> Nothing
 
 runHoleT :: Monad m => HoleEnv tp -> HoleT tp m a -> m a
 runHoleT  = runNodeT1
@@ -97,8 +95,6 @@ pipeHandler config = do
           Ping    -> pure ()
           Eof     -> exit ()
           Pong    -> pure ()
-          PeerReg -> pure ()
-          NatEcho -> pure ()
           Trns    -> do
             r <- liftIO $ tryAny $ sendData tp1 $ getPacketData pkt
             case r of

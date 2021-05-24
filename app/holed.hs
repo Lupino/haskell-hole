@@ -3,22 +3,17 @@
 module Main where
 
 import           Data.Char           (toLower, toUpper)
-import           Data.List           (isPrefixOf)
 import           Hole
-import           Hole.Types          (PacketType (..), formatMessage)
 import           Options.Applicative
 
 data Flags = Flags
-  { flagHoleAddr  :: String
-  , flagAddr      :: String
-  , flagRL        :: Bool
-  , flagLog       :: String
-  , flagMethod    :: String
-  , flagCipher    :: String
-  , flagKey       :: String
-  , flagPeer      :: String
-  , flagPeerAlive :: Int
-  , flagName      :: String
+  { flagHoleAddr :: String
+  , flagAddr     :: String
+  , flagRL       :: Bool
+  , flagLog      :: String
+  , flagMethod   :: String
+  , flagCipher   :: String
+  , flagKey      :: String
   }
 
 parser :: Parser Flags
@@ -62,23 +57,6 @@ parser = Flags
     <> metavar "KEY"
     <> help "Crypto key."
     <> value "none")
-  <*> strOption
-    (  long "peer"
-    <> short 'p'
-    <> metavar "PEER"
-    <> help "Peer Server."
-    <> value "")
-  <*> option auto
-    (  long "peer-alive"
-    <> metavar "PEER ALIVE"
-    <> help "Peer Keepalive."
-    <> value 600)
-  <*> strOption
-    (  long "name"
-    <> short 'n'
-    <> metavar "NAME"
-    <> help "Peer Name"
-    <> value "peer-name")
 
 main :: IO ()
 main = execParser opts >>= program
@@ -91,7 +69,7 @@ main = execParser opts >>= program
 program :: Flags -> IO ()
 program Flags {..} =
   startHoleServer Config
-    { holeSockPort = flagHoleAddr ++ holeInfo
+    { holeSockPort = flagHoleAddr
     , outSockPort  = flagAddr
     , logLevel     = read $ map toUpper flagLog
     , proxyMode    = if flagRL then RemoteToLocal else LocalToRemote
@@ -99,8 +77,3 @@ program Flags {..} =
     , cryptoCipher = map toLower flagCipher
     , cryptoKey    = flagKey
     }
-
-  where holeInfo =
-          if "udp" `isPrefixOf` flagHoleAddr then
-            "?peer=" ++ flagPeer ++ "&keepalive=" ++ show flagPeerAlive ++ "&message=" ++ formatMessage PeerReg flagName
-          else ""

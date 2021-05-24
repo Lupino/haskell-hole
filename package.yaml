@@ -65,20 +65,6 @@ executables:
     dependencies:
     - haskell-hole
     - optparse-applicative
-  peerd:
-    main:                peerd.hs
-    source-dirs:         app
-    ghc-options:
-    - -threaded
-    - -rtsopts
-    - -with-rtsopts=-N
-    dependencies:
-    - haskell-hole
-    - metro-socket
-    - metro
-    - bytestring
-    - unliftio
-    - network
 
 tests:
   haskell-hole-test:

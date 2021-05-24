@@ -20,7 +20,6 @@ import           Crypto.Cipher.TripleDES
 import           Crypto.Cipher.Twofish
 import           Crypto.Cipher.Types     (BlockCipher (..), Cipher (..))
 import           Data.ByteString         (ByteString)
-import qualified Data.ByteString.Char8   as B (pack, unpack)
 import           Data.IOMap              (IOMap)
 import qualified Data.IOMap              as Map (elems)
 import           Data.List               (sortOn)
@@ -39,15 +38,11 @@ import           Metro.Server            (ServerEnv, getNodeEnvList,
                                           initServerEnv, setServerName,
                                           startServer)
 import qualified Metro.Server            as S (setSessionMode)
-import           Metro.Socket            (getDatagramAddr)
-import           Metro.SocketServer      (SocketServer (..), socketServer)
+import           Metro.SocketServer      (socketServer)
 import           Metro.TP.Crypto         (makeCrypto)
 import           Metro.TP.Debug          (DebugMode (..), debugConfig)
 import           Metro.TP.Socket         (socket)
-import           Metro.TP.UDPSocket      (doSendAll)
-import           Metro.UDPServer         (getSocket)
 import           Metro.Utils             (setupLog)
-import           Network.Socket          (addrAddress)
 import           System.Log              (Priority (..))
 import           System.Log.Logger       (errorM)
 import           UnliftIO
@@ -73,18 +68,12 @@ newHoleServer
   => (TransportConfig (STP serv) -> TransportConfig tp)
   -> ServerConfig serv
   -> HoleSessionT tp IO ()
-  -> (serv -> ByteString -> IO ())
   -> IO (Async (), HoleServerEnv serv tp)
-newHoleServer mk config sess sendNatEcho = do
+newHoleServer mk config sess = do
   gen <- sessionGen 1 (maxBound - 1000)
-  sEnv <- fmap mapEnv . initServerEnv config gen mk $ \serv _ connEnv -> do
+  sEnv <- fmap mapEnv . initServerEnv config gen mk $ \_ _ connEnv -> do
     pkt <- runConnT connEnv receive
-    case packetType pkt of
-      PeerReg -> return Nothing
-      NatEcho -> do
-        sendNatEcho serv $ getPacketData pkt
-        return Nothing
-      _       -> return $ Just (getPacketData pkt, ())
+    return $ Just (getPacketData pkt, ())
   io <- async $ startServer sEnv sess
   return (io, sEnv)
 
@@ -118,10 +107,9 @@ startHoleServerLR_
   -> ServerConfig serv1
   -> (TransportConfig (STP serv0) -> TransportConfig tp0)
   -> (TransportConfig (STP serv1) -> TransportConfig tp1)
-  -> (serv0 -> ByteString -> IO ())
   -> IO ()
-startHoleServerLR_ config0 config1 mapT0 mapT1 sendNatEcho = do
-  (_, sEnv) <- newHoleServer mapT0 config0 pongHandler sendNatEcho
+startHoleServerLR_ config0 config1 mapT0 mapT1 = do
+  (_, sEnv) <- newHoleServer mapT0 config0 pongHandler
   startHoleOutServer (doAction (getNodeEnvList sEnv)) config1 mapT1
 
 startHoleServerRL_
@@ -129,10 +117,9 @@ startHoleServerRL_
   => ServerConfig serv0
   -> TransportConfig tp1
   -> (TransportConfig (STP serv0) -> TransportConfig tp0)
-  -> (serv0 -> ByteString -> IO ())
   -> IO ()
-startHoleServerRL_ config0 config1 mapT0 sendNatEcho = do
-  (io, _) <- newHoleServer mapT0 config0 (pipeHandler config1) sendNatEcho
+startHoleServerRL_ config0 config1 mapT0 = do
+  (io, _) <- newHoleServer mapT0 config0 (pipeHandler config1)
   r <- waitCatch io
   case r of
     Left e  -> liftIO $ errorM "Hole" $ "HoleServer error " ++ show e
@@ -148,18 +135,17 @@ startHoleServerLR mcipher Config {..} = do
     let m0 = debugConfig "HoleServer" Raw
         m1 = debugConfig "OutServer" Raw
 
-    startHoleServerLR_ (socketServer holeSockPort) (socketServer outSockPort) m0 m1 doSendNatEcho
+    startHoleServerLR_ (socketServer holeSockPort) (socketServer outSockPort) m0 m1
   else
     case mcipher of
       Nothing ->
-        startHoleServerLR_ (socketServer holeSockPort) (socketServer outSockPort) id id doSendNatEcho
+        startHoleServerLR_ (socketServer holeSockPort) (socketServer outSockPort) id id
       Just cipher ->
         startHoleServerLR_
           (socketServer holeSockPort)
           (socketServer outSockPort)
           (makeCrypto cipher cryptoMethod cryptoKey)
           id
-          doSendNatEcho
 
 startHoleServerRL
   :: (Cipher cipher, BlockCipher cipher)
@@ -170,26 +156,17 @@ startHoleServerRL mcipher Config {..} = do
     let m0 = debugConfig "HoleServer" Raw
         m1 = debugConfig "OutClient" Raw
 
-    startHoleServerRL_ (socketServer holeSockPort) (m1 $ socket outSockPort) m0 doSendNatEcho
+    startHoleServerRL_ (socketServer holeSockPort) (m1 $ socket outSockPort) m0
   else
     case mcipher of
       Nothing ->
-        startHoleServerRL_ (socketServer holeSockPort) (socket outSockPort) id doSendNatEcho
+        startHoleServerRL_ (socketServer holeSockPort) (socket outSockPort) id
       Just cipher ->
         startHoleServerRL_
           (socketServer holeSockPort)
           (socket outSockPort)
           (makeCrypto cipher cryptoMethod cryptoKey)
-          doSendNatEcho
 
-doSendNatEcho :: SocketServer -> ByteString -> IO ()
-doSendNatEcho (TCP _) _     = return ()
-doSendNatEcho (UDP serv) bs = do
-  maddr <- getDatagramAddr $ B.unpack bs
-  case maddr of
-    Nothing -> return ()
-    Just addrInfo ->
-      doSendAll (getSocket serv) (addrAddress addrInfo) . B.pack $ formatMessage NatEcho ""
 
 startHoleServer_ :: (Cipher cipher, BlockCipher cipher) => Maybe cipher -> Config -> IO ()
 startHoleServer_ mcipher config = do

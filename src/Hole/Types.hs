@@ -6,25 +6,23 @@ module Hole.Types
   , packet
   , getPacketData
   , maxDataLength
-  , formatMessage
   ) where
 
-import           Control.Exception     (Exception)
-import           Data.Binary           (Binary (..), decode, decodeOrFail,
-                                        encode, getWord8, putWord8)
-import           Data.Binary.Get       (getByteString, getWord16be, getWord32be)
-import           Data.Binary.Put       (putByteString, putWord16be, putWord32be)
-import           Data.ByteString       (ByteString)
-import qualified Data.ByteString       as B (length)
-import qualified Data.ByteString.Char8 as B (pack, unpack)
-import           Data.ByteString.Lazy  (fromStrict, toStrict)
-import qualified Data.ByteString.Lazy  as LB (unpack)
-import           Data.Word             (Word16)
-import           Hole.CRC16            (crc16)
-import           Metro.Class           (GetPacketId (..), RecvPacket (..),
-                                        SendPacket (..), SetPacketId (..),
-                                        sendBinary)
-import           UnliftIO              (throwIO)
+import           Control.Exception    (Exception)
+import           Data.Binary          (Binary (..), decode, decodeOrFail,
+                                       encode, getWord8, putWord8)
+import           Data.Binary.Get      (getByteString, getWord16be, getWord32be)
+import           Data.Binary.Put      (putByteString, putWord16be, putWord32be)
+import           Data.ByteString      (ByteString)
+import qualified Data.ByteString      as B (length)
+import           Data.ByteString.Lazy (fromStrict)
+import qualified Data.ByteString.Lazy as LB (unpack)
+import           Data.Word            (Word16)
+import           Hole.CRC16           (crc16)
+import           Metro.Class          (GetPacketId (..), RecvPacket (..),
+                                       SendPacket (..), SetPacketId (..),
+                                       sendBinary)
+import           UnliftIO             (throwIO)
 
 maxDataLength :: Int
 maxDataLength = 41943040 -- 40m
@@ -38,7 +36,7 @@ instance Binary PacketLength where
   put (PacketLength l) = putWord32be $ fromIntegral l
 
 
-data PacketType = Ping | Trns | Eof | Pong | PeerReg | NatEcho
+data PacketType = Ping | Trns | Eof | Pong
   deriving (Show, Eq)
 
 
@@ -50,15 +48,11 @@ instance Binary PacketType where
       1 -> pure Trns
       2 -> pure Eof
       3 -> pure Pong
-      4 -> pure PeerReg
-      5 -> pure NatEcho
       _ -> fail $ "not such type " ++ show v
-  put Ping    = putWord8 0
-  put Trns    = putWord8 1
-  put Eof     = putWord8 2
-  put Pong    = putWord8 3
-  put PeerReg = putWord8 4
-  put NatEcho = putWord8 5
+  put Ping = putWord8 0
+  put Trns = putWord8 1
+  put Eof  = putWord8 2
+  put Pong = putWord8 3
 
 
 data Packet = Packet
@@ -121,6 +115,3 @@ data PacketError = PacketDecodeError String | PacketCrcNotMatch
   deriving (Show, Eq, Ord)
 
 instance Exception PacketError
-
-formatMessage :: PacketType -> String -> String
-formatMessage pt = B.unpack . toStrict . encode . preparePacket . packet pt . B.pack
