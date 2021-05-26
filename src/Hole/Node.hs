@@ -41,7 +41,7 @@ type HoleSessionT = SessionT () ByteString Word16 Packet
 initHoleEnv :: MonadIO m => ConnEnv tp -> ByteString -> m (HoleEnv tp)
 initHoleEnv connEnv nid = do
   gen <- liftIO $ sessionGen (maxBound - 1000) maxBound
-  initEnv1 (setSessionMode MultiAction) connEnv () nid gen
+  initEnv1 (setSessionMode MultiAction) connEnv () nid True gen
 
 sessionGen :: Word16 -> Word16 -> IO (IO Word16)
 sessionGen start end = do
