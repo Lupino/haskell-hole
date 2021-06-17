@@ -72,7 +72,7 @@ newHoleServer
 newHoleServer mk config sess = do
   gen <- sessionGen 1 (maxBound - 1000)
   sEnv <- fmap mapEnv . initServerEnv config gen mk $ \_ _ connEnv -> do
-    pkt <- runConnT connEnv receive
+    pkt <- runConnT connEnv (receive ())
     return $ Just (getPacketData pkt, ())
   io <- async $ startServer sEnv sess
   return (io, sEnv)
