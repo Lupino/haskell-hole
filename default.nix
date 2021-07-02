@@ -1,42 +1,35 @@
+{ compiler-nix-name ? "ghc8105" }:
 let
-  # We are using lts-15.13 stack resolver which uses ghc883 (cf https://www.stackage.org/lts-15.13)
-  compiler = "ghc884";
+  # Read in the Niv sources
+  sources = import ./nix/sources.nix {};
+  # If ./nix/sources.nix file is not found run:
+  #   niv init
+  #   niv add input-output-hk/haskell.nix -n haskellNix
 
-  # pin nixpkgs for reproducible build
-  nixpkgsVersion = import nix/nixpkgs-version.nix;
-  nixpkgs =
-    builtins.fetchTarball {
-      url = "https://github.com/nixos/nixpkgs/archive/${nixpkgsVersion.rev}.tar.gz";
-      sha256 = nixpkgsVersion.tarballHash;
+  # Fetch the haskell.nix commit we have pinned with Niv
+  haskellNix = import sources.haskellNix { };
+  # If haskellNix is not found run:
+  #   niv add input-output-hk/haskell.nix -n haskellNix
+
+  # Import nixpkgs and pass the haskell.nix provided nixpkgsArgs
+  pkgs = import
+    # haskell.nix provides access to the nixpkgs pins which are used by our CI,
+    # hence you will be more likely to get cache hits when using these.
+    # But you can also just use your own, e.g. '<nixpkgs>'.
+    sources.nixpkgs
+    # These arguments passed to nixpkgs, include some patches and also
+    # the haskell.nix functionality itself as an overlay.
+    haskellNix.nixpkgsArgs;
+in pkgs.haskell-nix.cabalProject {
+    # 'cleanGit' cleans a source directory based on the files known by git
+    src = pkgs.haskell-nix.haskellLib.cleanGit {
+      src = ./.;
+      name = "haskell-hole";
     };
-
-
-  # overlays define packages we need to build our project
-  allOverlays = import nix/overlays;
-  overlays = [
-    allOverlays.gitignore # helper to use gitignoreSource
-    (allOverlays.haskell-packages { inherit compiler; })
-  ];
-
-  pkgs = import nixpkgs { inherit overlays; };
-
-  # We define our packages by giving them names and a list of source files
-  haskell-hole = {
-    name = "haskell-hole";
-    src = pkgs.lib.sourceFilesBySuffices (pkgs.gitignoreSource ./.)[ ".cabal" ".hs" "LICENSE" ];
-  };
-
-  # Some patches are unfortunately necessary to work with libpq
-  patches = pkgs.callPackage nix/patches {};
-
-  lib = pkgs.haskell.lib;
-
-  # call our script which add our packages to nh2/static-haskell-nix project
-  staticHaskellPackage = import nix/static-haskell-package.nix { inherit nixpkgs compiler patches allOverlays; };
-in
-rec {
-  inherit nixpkgs pkgs;
-
-  # if instead we want to generated a fully static executable we need:
-  haskell-hole-static = lib.justStaticExecutables (lib.dontCheck (staticHaskellPackage haskell-hole.name haskell-hole.src));
-}
+    index-state = "2021-06-30T00:00:00Z";
+    index-sha256 = "0f6213f13984148dbf6ad865576e3a9ebb330751b30b49a7f6e02697865cbb01";
+    plan-sha256 = if compiler-nix-name == "ghc8105" then "0lc2ypkkzwc6nf0s8zpgxz9zn8wdmnww3q8rp1h5zak9q2yxk8sb" else null;
+    materialized = if compiler-nix-name == "ghc8105" then ./nix/materialized else null;
+    # Specify the GHC version to use.
+    compiler-nix-name = compiler-nix-name;
+  }
