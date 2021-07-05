@@ -33,6 +33,13 @@ holed: dist/$(PLATFORM)/holed
 package: hole holed
 	cd dist/$(PLATFORM) && tar cjvf ../hole-linux-$(PLATFORM).tar.bz2 hole*
 
+plan-sha256:
+	nix-build -A plan-nix.passthru.calculateMaterializedSha | bash
+
+materialized:
+	rm -r nix/materialized
+	nix-build 2>&1 | grep -om1 '/nix/store/.*-updateMaterialized' | bash
+
 clean:
 	rm -rf dist
 
@@ -40,3 +47,6 @@ help:
 	@echo make PLATFORM=muslpi
 	@echo make PLATFORM=musl64
 	@echo make PLATFORM=aarch64-multiplatform-musl
+	@echo make clean
+	@echo make plan-sha256
+	@echo make materialized
