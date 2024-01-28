@@ -85,7 +85,7 @@ calcCrc16 pkt = crc16 . LB.unpack $ encode pkt'
   where pkt' = pkt { packetCrc = 0 }
 
 instance RecvPacket () Packet where
-  recvPacket _ recv = do
+  recvPacket _ _ recv = do
     hbs <- recv 4
     case decode (fromStrict hbs) of
       PacketLength len -> do
