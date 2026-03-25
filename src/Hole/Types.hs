@@ -3,13 +3,14 @@
 module Hole.Types
   ( Packet (..)
   , PacketType (..)
+  , PacketError (..)
   , packet
   , getPacketData
   , maxDataLength
   ) where
 
 import           Control.Exception    (Exception)
-import           Data.Binary          (Binary (..), decode, decodeOrFail,
+import           Data.Binary          (Binary (..), decodeOrFail,
                                        encode, getWord8, putWord8)
 import           Data.Binary.Get      (getByteString, getWord16be, getWord32be)
 import           Data.Binary.Put      (putByteString, putWord16be, putWord32be)
@@ -22,7 +23,7 @@ import           Hole.CRC16           (crc16)
 import           Metro.Class          (GetPacketId (..), RecvPacket (..),
                                        SendPacket (..), SetPacketId (..),
                                        sendBinary)
-import           UnliftIO             (throwIO)
+import           UnliftIO             (MonadUnliftIO, throwIO)
 
 maxDataLength :: Int
 maxDataLength = 41943040 -- 40m
@@ -87,12 +88,14 @@ calcCrc16 pkt = crc16 . LB.unpack $ encode pkt'
 instance RecvPacket () Packet where
   recvPacket _ _ recv = do
     hbs <- recv 4
-    case decode (fromStrict hbs) of
-      PacketLength len -> do
+    case decodeOrFail (fromStrict hbs) of
+      Left (_, _, e1) -> throwIO $ PacketDecodeError $ "PacketLength: " <> e1
+      Right (_, _, PacketLength len) -> do
+        validatePacketLength len
         bs <- recv len
         case decodeOrFail (fromStrict $ hbs <> bs) of
           Left (_, _, e1)   -> throwIO $ PacketDecodeError $ "Packet: " <> e1
-          Right (_, _, pkt) -> do
+          Right (_, _, pkt) ->
             if packetCrc pkt == calcCrc16 pkt then return pkt
                                               else throwIO PacketCrcNotMatch
 
@@ -115,3 +118,10 @@ data PacketError = PacketDecodeError String | PacketCrcNotMatch
   deriving (Show, Eq, Ord)
 
 instance Exception PacketError
+
+validatePacketLength :: MonadUnliftIO m => Int -> m ()
+validatePacketLength len
+  | len < 5 = throwIO $ PacketDecodeError $ "PacketLength too small: " ++ show len
+  | len > maxDataLength + 5 =
+      throwIO $ PacketDecodeError $ "PacketLength too large: " ++ show len
+  | otherwise = pure ()
