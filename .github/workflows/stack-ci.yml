@@ -35,3 +35,95 @@ jobs:
 
       - name: Stack test
         run: stack --no-terminal test
+
+      - name: Integration test (Local to Remote)
+        run: |
+          set -euo pipefail
+
+          BACKEND_PORT=18101
+          HOLE_PORT=19100
+          OUT_PORT=19101
+
+          python3 -m http.server "${BACKEND_PORT}" --bind 127.0.0.1 >/tmp/l2r-backend.log 2>&1 &
+          BACKEND_PID=$!
+
+          stack exec -- holed \
+            -H "tcp://127.0.0.1:${HOLE_PORT}" \
+            --addr "tcp://127.0.0.1:${OUT_PORT}" >/tmp/l2r-holed.log 2>&1 &
+          HOLED_PID=$!
+
+          # Avoid flaky startup races where hole connects before holed is listening.
+          sleep 1
+
+          stack exec -- hole \
+            -H "tcp://127.0.0.1:${HOLE_PORT}" \
+            --addr "tcp://127.0.0.1:${BACKEND_PORT}" >/tmp/l2r-hole.log 2>&1 &
+          HOLE_PID=$!
+
+          cleanup() {
+            kill "${HOLE_PID}" "${HOLED_PID}" "${BACKEND_PID}" 2>/dev/null || true
+          }
+          trap cleanup EXIT
+
+          for i in $(seq 1 40); do
+            if curl -fsS "http://127.0.0.1:${OUT_PORT}/" >/dev/null; then
+              exit 0
+            fi
+            sleep 0.25
+          done
+
+          echo "Local to Remote integration test failed"
+          echo "==== /tmp/l2r-backend.log ===="
+          cat /tmp/l2r-backend.log || true
+          echo "==== /tmp/l2r-holed.log ===="
+          cat /tmp/l2r-holed.log || true
+          echo "==== /tmp/l2r-hole.log ===="
+          cat /tmp/l2r-hole.log || true
+          exit 1
+
+      - name: Integration test (Remote to Local)
+        run: |
+          set -euo pipefail
+
+          BACKEND_PORT=18102
+          HOLE_PORT=19200
+          OUT_PORT=19201
+
+          python3 -m http.server "${BACKEND_PORT}" --bind 127.0.0.1 >/tmp/r2l-backend.log 2>&1 &
+          BACKEND_PID=$!
+
+          stack exec -- holed \
+            -H "tcp://127.0.0.1:${HOLE_PORT}" \
+            --addr "tcp://127.0.0.1:${BACKEND_PORT}" \
+            --use-remote-to-local >/tmp/r2l-holed.log 2>&1 &
+          HOLED_PID=$!
+
+          # Avoid flaky startup races where hole connects before holed is listening.
+          sleep 1
+
+          stack exec -- hole \
+            -H "tcp://127.0.0.1:${HOLE_PORT}" \
+            --addr "tcp://127.0.0.1:${OUT_PORT}" \
+            --use-remote-to-local >/tmp/r2l-hole.log 2>&1 &
+          HOLE_PID=$!
+
+          cleanup() {
+            kill "${HOLE_PID}" "${HOLED_PID}" "${BACKEND_PID}" 2>/dev/null || true
+          }
+          trap cleanup EXIT
+
+          for i in $(seq 1 40); do
+            if curl -fsS "http://127.0.0.1:${OUT_PORT}/" >/dev/null; then
+              exit 0
+            fi
+            sleep 0.25
+          done
+
+          echo "Remote to Local integration test failed"
+          echo "==== /tmp/r2l-backend.log ===="
+          cat /tmp/r2l-backend.log || true
+          echo "==== /tmp/r2l-holed.log ===="
+          cat /tmp/r2l-holed.log || true
+          echo "==== /tmp/r2l-hole.log ===="
+          cat /tmp/r2l-hole.log || true
+          exit 1

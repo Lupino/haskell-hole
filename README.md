@@ -1,22 +1,23 @@
 # haskell-hole
 
-Haskell version of [hole](https://github.com/Lupino/hole)
+Haskell implementation of [hole](https://github.com/Lupino/hole).
 
+`haskell-hole` is a reverse tunneling tool, similar to SSH reverse port forwarding.
+It is useful when direct inbound access is not available.
 
-When I visit raspberry pi' ssh server on some places,
-I must set port forwarding on the home route, and set a dynamic DNS.
-If the route is not your's, you will helpless.
+Instead of opening ports on a home router and configuring dynamic DNS, you can run:
+- `holed` on a globally reachable server
+- `hole` on the target private host
 
-I think it may have another way, so I try ssh port forwarding `ssh -CfNgR remote-port:localhost:local-port user@remote`, then visit the remote-port.
+Traffic is then forwarded through the `holed` server.
 
-The hole is an other way similar ssh port forwarding.
-On the global server create a `holed`, and the target host start `hole`.
-Last you can visit the `holed` to replace the real server.
+This fits network topologies where:
+- A (private) can connect to B (public)
+- C (private) can connect to B (public)
+- B cannot connect directly to A or C
+- A and C cannot connect directly to each other
 
-The hole suit the situation: A(private) can connect B(global), C(private) can connect B,
-but B can't connect C, B can't connect A, and A can't connect C.
-
-The hole support protocol `tcp` `tcp6` `udp` `udp6` and `unix socket`.
+Supported protocols: `tcp`, `tcp6`, `udp`, `udp6`, and `unix socket`.
 
 # Compile from source
 
@@ -29,23 +30,71 @@ The hole support protocol `tcp` `tcp6` `udp` `udp6` and `unix socket`.
 
     stack build
 
+## Test with stack (same as Stack CI)
+
+    stack --no-terminal test
+
+## CI integration tests
+
+Stack CI also validates both tunnel modes end-to-end with localhost services.
+
+### Local to Remote (CI)
+
+- `holed`:
+
+```
+stack exec -- holed -H tcp://127.0.0.1:19100 --addr tcp://127.0.0.1:19101
+```
+
+- `hole`:
+
+```
+stack exec -- hole -H tcp://127.0.0.1:19100 --addr tcp://127.0.0.1:18101
+```
+
+- Verify:
+
+```
+curl -fsS http://127.0.0.1:19101/
+```
+
+### Remote to Local (CI)
+
+- `holed`:
+
+```
+stack exec -- holed -H tcp://127.0.0.1:19200 --addr tcp://127.0.0.1:18102 --use-remote-to-local
+```
+
+- `hole`:
+
+```
+stack exec -- hole -H tcp://127.0.0.1:19200 --addr tcp://127.0.0.1:19201 --use-remote-to-local
+```
+
+- Verify:
+
+```
+curl -fsS http://127.0.0.1:19201/
+```
+
 # Usage
 
 ## Local to Remote
 
-- On server.
+- On server
 
 ```
 holed -H tcp://server:port --addr tcp://server:portout
 ```
 
-- On local mathine
+- On local machine
 
 ```
 hole -H tcp://server:port --addr tcp://localhost:portin
 ```
 
-Then you can access the local server via. tcp://server:portout
+Then you can access the local server via `tcp://server:portout`.
 
 ## Remote to Local
 
@@ -61,7 +110,7 @@ holed -H tcp://server:port --addr tcp://localhost:portin --use-remote-to-local
 hole -H tcp://server:port --addr tcp://localhost:portout --use-remote-to-local
 ```
 
-Then you can access the remote server via. tcp://localhost:portout
+Then you can access the remote server via `tcp://localhost:portout`.
 
 # Arguments
 
@@ -74,6 +123,7 @@ hole - Hole Client
 Usage: hole [-H|--hole-addr ADDRESS] [-a|--addr ADDRESS] [--use-remote-to-local]
             [-l|--log-level LEVEL] [-n|--name NAME] [-m|--method METHOD]
             [-c|--cipher CIPHER] [-k|--key KEY]
+
   Hole Client
 
 Available options:
@@ -81,7 +131,8 @@ Available options:
   -H,--hole-addr ADDRESS   Hole address
   -a,--addr ADDRESS        Address
   --use-remote-to-local    Use remote to local mode, default is local to remote
-  -l,--log-level LEVEL     Log level
+  -l,--log-level LEVEL     Log level. support DEBUG INFO NOTICE WARNING ERROR
+                           CRITICAL ALERT EMERGENCY
   -n,--name NAME           Client name
   -m,--method METHOD       Crypto method. support cbc cfb ecb ctr. default cfb
   -c,--cipher CIPHER       Crypto cipher. support aes128 aes192 aes256 blowfish
@@ -100,6 +151,7 @@ holed - Hole Server
 Usage: holed [-H|--hole-addr ADDRESS] [-a|--addr ADDRESS]
              [--use-remote-to-local] [-l|--log-level LEVEL] [-m|--method METHOD]
              [-c|--cipher CIPHER] [-k|--key KEY]
+
   Hole Server
 
 Available options:
@@ -107,12 +159,13 @@ Available options:
   -H,--hole-addr ADDRESS   Hole address
   -a,--addr ADDRESS        Address
   --use-remote-to-local    Use remote to local mode, default is local to remote
-  -l,--log-level LEVEL     Log level
-  -m,--method METHOD       Crypto method. one of cbc cfb ecb ctr
-  -c,--cipher CIPHER       Crypto cipher. one of aes128 aes192 aes256 blowfish
+  -l,--log-level LEVEL     Log level. support DEBUG INFO NOTICE WARNING ERROR
+                           CRITICAL ALERT EMERGENCY
+  -m,--method METHOD       Crypto method. support cbc cfb ecb ctr. default cfb
+  -c,--cipher CIPHER       Crypto cipher. support aes128 aes192 aes256 blowfish
                            blowfish64 blowfish128 blowfish256 blowfish448 cast5
                            camellia128 des des_eee3 des_ede3 des_eee2 des_ede2
-                           twofish128 twofish192 twofish256 none
+                           twofish128 twofish192 twofish256 none. default none
   -k,--key KEY             Crypto key.
 ```
 
