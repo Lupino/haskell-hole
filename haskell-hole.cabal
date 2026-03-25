@@ -1,10 +1,10 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.34.2.
+-- This file has been generated from package.yaml by hpack version 0.38.1.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: b8dc72854b485a087e8de788efa1804e90f9dfb2e8004e8dc0397c4ecef574fc
+-- hash: 02e6bcb620aa6b14b6ddbb3cae03095096cf07d362006554392ed895d5f1acaf
 
 name:           haskell-hole
 version:        0.1.0.0
@@ -40,7 +40,7 @@ library
       base >=4.7 && <5
     , binary
     , bytestring
-    , cryptonite
+    , crypton
     , hslogger
     , map-io
     , metro

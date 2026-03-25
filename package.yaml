@@ -37,7 +37,7 @@ library:
 
   - vector
 
-  - cryptonite
+  - crypton
   - metro-transport-crypto
   - text
   - map-io

@@ -17,7 +17,7 @@
 #
 # resolver: ./custom-snapshot.yaml
 # resolver: https://example.com/snapshots/2018-01-01.yaml
-resolver: lts-22.5
+resolver: lts-24.23
 
 # User packages to be built.
 # Various formats can be used as shown in the example below.
@@ -43,7 +43,7 @@ packages:
 # extra-deps: []
 extra-deps:
 - git: https://github.com/Lupino/metro.git
-  commit: 64aff9063c390099571cc748e0f619ab39530f79
+  commit: 2521ea32857e5ff6ff2d9a99b1ddacac35903c88
   subdirs:
   - .
   - map-io
@@ -73,3 +73,4 @@ extra-deps:
 #
 # Allow a newer minor version of GHC than the snapshot specifies
 # compiler-check: newer-minor
+allow-newer: true
