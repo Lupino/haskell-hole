@@ -54,6 +54,7 @@ executables:
     - -with-rtsopts=-N
     dependencies:
     - haskell-hole
+    - hslogger
     - optparse-applicative
   hole:
     main:                hole-exe.hs
@@ -64,6 +65,7 @@ executables:
     - -with-rtsopts=-N
     dependencies:
     - haskell-hole
+    - hslogger
     - optparse-applicative
 
 tests:
@@ -75,4 +77,7 @@ tests:
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
+    - binary
+    - bytestring
     - haskell-hole
+    - metro

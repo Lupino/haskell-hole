@@ -203,7 +203,7 @@ startHoleServer config =
     "twofish256"  -> startHoleServer_ (Just (undefined :: Twofish256)) config
 
     "none"        -> startHoleServer_ (Nothing :: Maybe AES128) config
-    method        -> error $ "Error: " ++ method ++ "not support"
+    method        -> error $ "Error: " ++ method ++ " is not supported"
 
 startHoleClient_
   :: (Cipher cipher, BlockCipher cipher)
@@ -242,7 +242,7 @@ startHoleClient cid config =
     "twofish192"  -> startHoleClient_ (Just (undefined :: Twofish192)) cid config
     "twofish256"  -> startHoleClient_ (Just (undefined :: Twofish256)) cid config
     "none"   -> startHoleClient_ (Nothing :: Maybe AES256) cid config
-    method   -> error $ "Error: " ++ method ++ "not support"
+    method   -> error $ "Error: " ++ method ++ " is not supported"
 
 startHoleClientLR
   :: (Cipher cipher, BlockCipher cipher)

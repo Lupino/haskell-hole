@@ -3,8 +3,11 @@
 module Main where
 
 import           Data.Char           (toLower, toUpper)
+import           Data.Maybe          (listToMaybe)
 import           Hole
 import           Options.Applicative
+import           System.Exit         (die)
+import           System.Log          (Priority)
 
 data Flags = Flags
   { flagHoleAddr :: String
@@ -68,12 +71,19 @@ main = execParser opts >>= program
 
 program :: Flags -> IO ()
 program Flags {..} =
-  startHoleServer Config
-    { holeSockPort = flagHoleAddr
-    , outSockPort  = flagAddr
-    , logLevel     = read $ map toUpper flagLog
-    , proxyMode    = if flagRL then RemoteToLocal else LocalToRemote
-    , cryptoMethod = map toLower flagMethod
-    , cryptoCipher = map toLower flagCipher
-    , cryptoKey    = flagKey
-    }
+  case parsePriority flagLog of
+    Nothing ->
+      die $ "Error: invalid log level: " ++ flagLog
+    Just p ->
+      startHoleServer Config
+        { holeSockPort = flagHoleAddr
+        , outSockPort  = flagAddr
+        , logLevel     = p
+        , proxyMode    = if flagRL then RemoteToLocal else LocalToRemote
+        , cryptoMethod = map toLower flagMethod
+        , cryptoCipher = map toLower flagCipher
+        , cryptoKey    = flagKey
+        }
+
+parsePriority :: String -> Maybe Priority
+parsePriority s = fst <$> listToMaybe (reads (map toUpper s))
