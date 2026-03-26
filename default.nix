@@ -1,22 +1,28 @@
-{ compiler-nix-name ? "ghc8105" }:
+{ compiler-nix-name ? "ghc9141", enableProfiling ? false }:
 let
   # Read in the Niv sources
   sources = import ./nix/sources.nix {};
   # If ./nix/sources.nix file is not found run:
   #   niv init
   #   niv add input-output-hk/haskell.nix -n haskellNix
-
   # Fetch the haskell.nix commit we have pinned with Niv
   haskellNix = import sources.haskellNix { };
   # If haskellNix is not found run:
   #   niv add input-output-hk/haskell.nix -n haskellNix
+  # Import hackage index state from haskell.nix's hackage.nix
+  hackageIndexState = import (haskellNix.sources.hackage + "/index-state.nix");
+
+  # Get the latest index state by sorting the keys
+  allIndexStates = builtins.attrNames hackageIndexState;
+  sortedStates = builtins.sort (a: b: a > b) allIndexStates;
+  latestState = builtins.head sortedStates;
 
   # Import nixpkgs and pass the haskell.nix provided nixpkgsArgs
   pkgs = import
     # haskell.nix provides access to the nixpkgs pins which are used by our CI,
     # hence you will be more likely to get cache hits when using these.
     # But you can also just use your own, e.g. '<nixpkgs>'.
-    sources.nixpkgs
+    haskellNix.sources.nixpkgs-2411
     # These arguments passed to nixpkgs, include some patches and also
     # the haskell.nix functionality itself as an overlay.
     haskellNix.nixpkgsArgs;
@@ -26,10 +32,15 @@ in pkgs.haskell-nix.cabalProject {
       src = ./.;
       name = "haskell-hole";
     };
-    index-state = "2021-06-30T00:00:00Z";
-    index-sha256 = "0f6213f13984148dbf6ad865576e3a9ebb330751b30b49a7f6e02697865cbb01";
-    plan-sha256 = if compiler-nix-name == "ghc8105" then "0pf8im1v15iwi0n0gksxkvrxhwgljmax92z23cwdicv2asf3da9n" else null;
-    materialized = if compiler-nix-name == "ghc8105" then ./nix/materialized else null;
+    # Use index state from hackage.nix
+    index-state = latestState;
+    index-sha256 = hackageIndexState.${latestState};
+    sha256map = import ./nix/sha256map.nix;
     # Specify the GHC version to use.
     compiler-nix-name = compiler-nix-name;
+    modules = [(
+       {pkgs, ...}: {
+         # Enable profiling globally for all packages if requested
+         enableProfiling = enableProfiling;
+      })];
   }

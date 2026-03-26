@@ -3,11 +3,9 @@ cabal-version: 1.12
 -- This file has been generated from package.yaml by hpack version 0.38.1.
 --
 -- see: https://github.com/sol/hpack
---
--- hash: 02e6bcb620aa6b14b6ddbb3cae03095096cf07d362006554392ed895d5f1acaf
 
 name:           haskell-hole
-version:        0.1.0.0
+version:        0.1.1.0
 description:    Please see the README on GitHub at <https://github.com/Lupino/haskell-hole#readme>
 homepage:       https://github.com/Lupino/haskell-hole#readme
 bug-reports:    https://github.com/Lupino/haskell-hole/issues
